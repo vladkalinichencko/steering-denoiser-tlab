@@ -6,3 +6,4 @@ datasets
 matplotlib
 tqdm
 # SAE: pip install --no-deps -e ext/sparse_autoencoder
+mlflow

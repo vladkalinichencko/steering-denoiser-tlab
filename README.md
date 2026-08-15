@@ -19,3 +19,9 @@ python baseline.py --latent 12345 --concept-words paris eiffel france --alphas 0
 ```
 
 Результат — `runs/baseline_latent12345.json`.
+
+Метрики — в локальный MLflow (`sqlite:///mlflow.db`):
+
+```bash
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+```

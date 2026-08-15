@@ -8,8 +8,10 @@ every improved method has to beat. Writes runs/<tag>.json.
 
 import argparse
 import json
+import os
 import pathlib
 
+import mlflow
 import torch
 import transformer_lens
 
@@ -121,6 +123,11 @@ def main():
     model.eval()
     v = sae_vector(args.latent, args.device)
 
+    mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
+    mlflow.set_experiment("steering")
+    mlflow.start_run(run_name=args.tag or f"baseline_latent{args.latent}")
+    mlflow.log_params({k: str(v)[:250] for k, v in vars(args).items()})
+
     rows = []
     for alpha in args.alphas:
         samples = generate(model, v, alpha, args.n_samples, args.max_new_tokens, args.seed)
@@ -139,10 +146,15 @@ def main():
         r = rows[-1]
         print(f"alpha={alpha:6.1f}  ppl={r['ppl']:8.2f}  d1={r['dist1']:.3f} "
               f"d2={r['dist2']:.3f} d3={r['dist3']:.3f}  concept={r['concept']:.2f}")
+        mlflow.log_metrics(
+            {k: v for k, v in r.items() if k != "sample"}, step=int(alpha)
+        )
 
     tag = args.tag or f"baseline_latent{args.latent}"
     out = pathlib.Path("runs") / f"{tag}.json"
     out.write_text(json.dumps({"config": vars(args), "rows": rows}, indent=2))
+    mlflow.log_artifact(str(out))
+    mlflow.end_run()
     print(f"-> {out}")
 
 
