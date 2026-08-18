@@ -53,13 +53,25 @@ def load_denoiser(path, device):
     return m
 
 
-def make_hook(v, alpha, denoiser, steps):
+def make_hook(v, alpha, denoiser, steps, gate_z=None, stats=None):
+    """gate_z: чинить только те позиции, что реально уехали.
+
+    Диагностика показала, что денойзер вредит на почти чистых состояниях и помогает
+    на сильно застиренных, а при генерации первых подавляющее большинство. Гейт по
+    z-оценке относительно настоящих активаций включает починку только там, где надо.
+    """
     def hook(resid, hook):
         h = resid + alpha * v
-        if denoiser is not None:
-            for _ in range(steps):
-                h = denoiser(h)
-        return h
+        if denoiser is None:
+            return h
+        fixed = h
+        for _ in range(steps):
+            fixed = denoiser(fixed)
+        if gate_z is None:
+            return fixed
+        mean, std = stats
+        z = ((h - mean) / std).abs().mean(-1, keepdim=True)
+        return torch.where(z > gate_z, fixed, h)
     return hook
 
 
@@ -107,6 +119,9 @@ def main():
     p.add_argument("--concept-words", nargs="+", required=True)
     p.add_argument("--denoiser", default="runs/mlp_interp/denoiser.pt")
     p.add_argument("--denoise-steps", type=int, default=1)
+    p.add_argument("--gate-z", type=float, default=None,
+                   help="применять денойзер только там, где z-оценка выше порога")
+    p.add_argument("--acts", default="datasets/acts_layer6_100000.pt")
     p.add_argument("--alphas", type=float, nargs="+", default=[0, 20, 40, 60, 80, 120])
     p.add_argument("--n-samples", type=int, default=8)
     p.add_argument("--max-new-tokens", type=int, default=24)
@@ -126,11 +141,18 @@ def main():
     mlflow.start_run(run_name=args.tag)
     mlflow.log_params({k: str(v_)[:250] for k, v_ in vars(args).items()})
 
+    real = torch.load(args.acts, map_location=args.device).float()
+    norms = real.norm(dim=-1)
+    real = real[norms < norms.median() * 5]
+    stats = (real.mean(0), real.std(0) + 1e-6)
+
     rows = []
     print(f"{'режим':>12} {'alpha':>6} {'ppl':>9} {'dist2':>7} {'concept':>8}")
-    for mode, den in (("без денойзера", None), ("с денойзером", denoiser)):
+    gate_label = f"с гейтом z>{args.gate_z}" if args.gate_z else "с денойзером"
+    for mode, den in (("без денойзера", None), (gate_label, denoiser)):
         for alpha in args.alphas:
-            hook = make_hook(v, alpha, den, args.denoise_steps) if (alpha or den) else None
+            hook = (make_hook(v, alpha, den, args.denoise_steps, args.gate_z, stats)
+                    if (alpha or den) else None)
             samples = generate(model, hook, args.n_samples, args.max_new_tokens, args.seed)
             conts = [s["cont"] for s in samples]
             row = {"режим": mode, "alpha": alpha, "ppl": perplexity(model, samples),
