@@ -43,6 +43,14 @@ class Denoiser(nn.Module):
         return h + self.out(x)  # остаток: на чистом входе легко выучить тождество
 
 
+def denoise_loss(pred, target, noisy, mode):
+    if mode == "mse":
+        return F.mse_loss(pred, target)
+    # ошибка относительно того, насколько вход был испорчен
+    damage = (target - noisy).pow(2).mean(-1) + 1e-6
+    return ((pred - target).pow(2).mean(-1) / damage).mean()
+
+
 def collect_activations(n_vectors, device, seq_len=128):
     """Кэш активаций слоя 6 на тексте FineWeb. Считается один раз."""
     cache = CACHE / f"acts_layer{LAYER}_{n_vectors}.pt"
@@ -96,6 +104,9 @@ def main():
     p.add_argument("--d-hidden", type=int, default=2048)
     p.add_argument("--n-layers", type=int, default=2)
     p.add_argument("--noise", choices=["interp", "additive"], default="interp")
+    p.add_argument("--loss", choices=["mse", "relative"], default="mse",
+                   help="relative делит ошибку на величину повреждения, чтобы слабо "
+                        "зашумлённые примеры не терялись на фоне сильно зашумлённых")
     p.add_argument("--sigma", type=float, default=None,
                    help="масштаб шума; по умолчанию берётся из нормы активаций")
     p.add_argument("--lr", type=float, default=3e-4)
@@ -128,14 +139,16 @@ def main():
     for step in range(args.steps):
         idx = torch.randint(0, len(train), (args.batch_size,), device=args.device)
         h = train[idx]
-        loss = F.mse_loss(model(corrupt(h, args.noise, sigma)), h)
+        noisy = corrupt(h, args.noise, sigma)
+        loss = denoise_loss(model(noisy), h, noisy, args.loss)
         loss.backward()
         opt.step()
         opt.zero_grad(set_to_none=True)
 
         if step % 200 == 0 or step == args.steps - 1:
             with torch.no_grad():
-                vl = F.mse_loss(model(corrupt(val, args.noise, sigma)), val).item()
+                val_noisy = corrupt(val, args.noise, sigma)
+                vl = denoise_loss(model(val_noisy), val, val_noisy, args.loss).item()
                 # контроль: денойзер не должен ломать чистые активации
                 clean = F.mse_loss(model(val), val).item()
             print(f"шаг {step:>5}  train {loss.item():.4f}  val {vl:.4f}  "
