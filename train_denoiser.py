@@ -87,7 +87,15 @@ def collect_activations(n_vectors, device, seq_len=128):
     return acts.to(device)
 
 
-def corrupt(h, mode, sigma, generator=None):
+def corrupt(h, mode, sigma, generator=None, alpha_max=4.0):
+    if mode == "directional":
+        # порча, похожая на стиринг: сдвиг вдоль одного случайного направления.
+        # Направления случайные, валидационные v денойзер по-прежнему не видит.
+        u = torch.randn(h.shape, device=h.device, generator=generator)
+        u = u / u.norm(dim=-1, keepdim=True)
+        alpha = torch.rand(h.shape[0], 1, device=h.device, generator=generator)
+        return h + alpha * alpha_max * h.norm(dim=-1, keepdim=True) * u
+
     eps = torch.randn(h.shape, device=h.device, generator=generator) * sigma
     if mode == "additive":
         return h + eps
@@ -103,7 +111,8 @@ def main():
     p.add_argument("--batch-size", type=int, default=512)
     p.add_argument("--d-hidden", type=int, default=2048)
     p.add_argument("--n-layers", type=int, default=2)
-    p.add_argument("--noise", choices=["interp", "additive"], default="interp")
+    p.add_argument("--noise", choices=["interp", "additive", "directional"],
+                   default="interp")
     p.add_argument("--loss", choices=["mse", "relative"], default="mse",
                    help="relative делит ошибку на величину повреждения, чтобы слабо "
                         "зашумлённые примеры не терялись на фоне сильно зашумлённых")
