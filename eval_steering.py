@@ -44,7 +44,7 @@ def methods(args, nets):
             out.append(("mse", lambda h: nets["mse"].repair(h)))
         else:
             for t in args.t_start:
-                out.append((f"glp@{t:g}",
+                out.append((f"glp_t{t:g}",
                             lambda h, t=t: denoiser.sdedit(nets["glp"], h, t, args.steps)))
     return out
 
@@ -77,6 +77,8 @@ def main():
     mlflow.start_run(run_name=args.tag)
     mlflow.log_params({k: str(x)[:250] for k, x in vars(args).items()})
 
+    out = pathlib.Path("runs") / f"{args.tag}.json"
+    out.parent.mkdir(exist_ok=True)
     rows = []
     for kind, repair in methods(args, nets):
         for alpha in args.alphas:
@@ -87,14 +89,16 @@ def main():
                    **steering.measure(model, samples, args.vector, args.concept_words),
                    "sample": samples[0]["cont"]}
             rows.append(row)
-            print(f"{kind:>5} alpha={alpha:6.1f}  ppl={row['ppl']:8.2f}  "
-                  f"d2={row['dist2']:.3f}  concept={row['concept']:.3f}")
-            mlflow.log_metrics({f"{kind}_{k}": x for k, x in row.items()
-                                if isinstance(x, float)}, step=int(alpha))
-
-    out = pathlib.Path("runs") / f"{args.tag}.json"
-    out.parent.mkdir(exist_ok=True)
-    out.write_text(json.dumps({"config": vars(args), "rows": rows}, indent=2))
+            print(f"{kind:>8} alpha={alpha:6.1f}  ppl={row['ppl']:8.2f}  "
+                  f"d2={row['dist2']:.3f}  concept={row['concept']:.3f}", flush=True)
+            # пишем после каждой точки: фронт считается часами, и падение на
+            # последней точке не должно стоить всех предыдущих
+            out.write_text(json.dumps({"config": vars(args), "rows": rows}, indent=2))
+            try:
+                mlflow.log_metrics({f"{kind}_{k}": x for k, x in row.items()
+                                    if isinstance(x, float)}, step=int(alpha))
+            except Exception as exc:  # логирование не имеет права ронять эксперимент
+                print(f"  mlflow не записал: {exc}", flush=True)
     mlflow.log_artifact(str(out))
     mlflow.end_run()
     print(f"-> {out}")
