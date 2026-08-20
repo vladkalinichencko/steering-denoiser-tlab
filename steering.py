@@ -59,8 +59,8 @@ def autoencoder(device):
         import blobfile as bf
         import sparse_autoencoder
         with bf.BlobFile(sparse_autoencoder.paths.v5_32k("resid_post_mlp", LAYER), "rb") as f:
-            _sae = sparse_autoencoder.Autoencoder.from_state_dict(torch.load(f)).to(device)
-    return _sae
+            _sae = sparse_autoencoder.Autoencoder.from_state_dict(torch.load(f))
+    return _sae.to(device)  # кэш один на процесс, а устройство спрашивают разное
 
 
 def sae_vector(latent, device):
