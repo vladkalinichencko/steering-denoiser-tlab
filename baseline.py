@@ -4,9 +4,10 @@ Step 3 of the task is "check you get a picture like the example", and the pictur
 only meaningful if the vector means what its name says. Two checks:
 
     --tokens   the tokens that fire this SAE latent hardest, straight from text
+    --lens     the tokens the direction itself promotes, through the unembedding
     --sweep    the naive h -> h + alpha*v front (same numbers as eval_steering.py)
 
-    python baseline.py --vector sae:27677 --tokens
+    python baseline.py --vector sae:27677 --tokens --lens
     python baseline.py --vector diffmean:sentiment --sweep
 """
 
@@ -47,11 +48,25 @@ def top_tokens(latent, model, device, n_texts=400, k=20, seq_len=128):
     return hits[:k]
 
 
+@torch.no_grad()
+def logit_lens(v, model, k=15):
+    """Tokens the direction pushes towards, read straight off the unembedding.
+
+    Cheap and independent of any text sample: what steering along v adds to the logits
+    if the rest of the network passed it through untouched. Disagreement with the
+    top-activating tokens is informative — it means the latent reads one thing and
+    writes another."""
+    logits = model.ln_final(v[None]) @ model.W_U
+    top = logits[0].topk(k)
+    return [(round(float(x), 3), model.to_string(i)) for x, i in zip(top.values, top.indices)]
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--vector", required=True, help="sae:<i> | diffmean:<c>")
     p.add_argument("--concept-words", nargs="+", default=None)
     p.add_argument("--tokens", action="store_true", help="что латент вообще ловит")
+    p.add_argument("--lens", action="store_true", help="куда направление толкает логиты")
     p.add_argument("--sweep", action="store_true", help="наивный стиринг по alpha")
     p.add_argument("--alphas", type=float, nargs="+", default=[0, 10, 20, 40, 80, 160])
     p.add_argument("--n-samples", type=int, default=8)
@@ -69,6 +84,10 @@ def main():
         out["top_tokens"] = top_tokens(int(name), model, args.device)
         for act, tok, ctx in out["top_tokens"]:
             print(f"{act:8.3f}  {tok!r:20} …{ctx}")
+
+    if args.lens:
+        out["logit_lens"] = logit_lens(steering.vector(args.vector, model, args.device), model)
+        print("  ".join(f"{tok!r}:{val}" for val, tok in out["logit_lens"]))
 
     if args.sweep:
         v = steering.vector(args.vector, model, args.device)
