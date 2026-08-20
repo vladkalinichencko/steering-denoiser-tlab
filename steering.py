@@ -49,14 +49,24 @@ def load_model(device):
     return model
 
 
-def sae_vector(latent, device):
-    cache = CACHE / f"v_sae{latent}_layer{LAYER}.pt"
-    if not cache.exists():
+_sae = None
+
+
+def autoencoder(device):
+    """OpenAI v5_32k SAE для слоя 6, один раз на процесс."""
+    global _sae
+    if _sae is None:
         import blobfile as bf
         import sparse_autoencoder
         with bf.BlobFile(sparse_autoencoder.paths.v5_32k("resid_post_mlp", LAYER), "rb") as f:
-            ae = sparse_autoencoder.Autoencoder.from_state_dict(torch.load(f))
-        v = ae.decoder.weight[:, latent].detach().float()
+            _sae = sparse_autoencoder.Autoencoder.from_state_dict(torch.load(f)).to(device)
+    return _sae
+
+
+def sae_vector(latent, device):
+    cache = CACHE / f"v_sae{latent}_layer{LAYER}.pt"
+    if not cache.exists():
+        v = autoencoder("cpu").decoder.weight[:, latent].detach().float()
         CACHE.mkdir(exist_ok=True)
         torch.save(v / v.norm(), cache)
     return torch.load(cache, map_location=device).float()
@@ -144,14 +154,44 @@ def sentiment_score(texts):
     return sum(r["score"] if r["label"] == "POSITIVE" else 1 - r["score"] for r in out) / len(out)
 
 
+@torch.no_grad()
+def latent_score(texts, latent, model):
+    """How hard the latent itself fires on the generated text.
+
+    The concept axis for an SAE latent, without a word list: run the continuations
+    back through the model and the SAE and take the latent's own activation. A word
+    list is a guess about what the latent means; this is what the latent says.
+    Averaged over the strongest position in each continuation, since the concept
+    only has to appear somewhere.
+    """
+    ae = autoencoder(model.cfg.device)
+    peaks = []
+    for text in texts:
+        tokens = model.to_tokens(text if text.strip() else ".")
+        acts = model.run_with_cache(tokens, names_filter=HOOK)[1][HOOK][0]
+        peaks.append(float(ae.encode(acts)[0][:, latent].max()))
+    return sum(peaks) / max(len(peaks), 1)
+
+
 def keyword_score(texts, words):
     words = [w.lower() for w in words]
     return sum(any(w in t.lower() for w in words) for t in texts) / max(len(texts), 1)
 
 
-def measure(model, samples, spec, words):
+def measure(model, samples, spec, words=None):
+    """Обе оси парето. Ось концепта зависит от того, чем задан вектор.
+
+    diffmean — классификатор тональности; sae — активация самого латента; список слов
+    остаётся запасным вариантом, если он передан явно.
+    """
     conts = [s["cont"] for s in samples]
+    kind, name = spec.split(":")
+    if words:
+        concept = keyword_score(conts, words)
+    elif kind == "sae":
+        concept = latent_score(conts, int(name), model)
+    else:
+        concept = sentiment_score(conts)
     return {"ppl": perplexity(model, samples),
             "dist1": dist_n(conts, 1), "dist2": dist_n(conts, 2), "dist3": dist_n(conts, 3),
-            "concept": sentiment_score(conts) if spec.startswith("diffmean")
-                       else keyword_score(conts, words or [])}
+            "concept": concept}

@@ -20,6 +20,12 @@ N="${N:-500000}"          # столько активаций собрано, к
   $PY train_denoiser.py --tag glp --objective flow --n-vectors "$N" --steps 15000 --device mps
 [ -f runs/mse/denoiser.pt ] || \
   $PY train_denoiser.py --tag mse --objective mse --n-vectors "$N" --steps 15000 --device mps
+# латент SAE — вектор, который задание называет валидационным; концепт меряется
+# активацией самого латента, а не списком слов
+$PY eval_steering.py --tag pareto_sae27677 --vector sae:27677 \
+  --repair none mse glp --mse runs/mse/denoiser.pt --glp runs/glp/denoiser.pt \
+  --t-start 0.2 0.35 0.5 --device mps
+
 $PY eval_steering.py --tag pareto_sentiment --vector diffmean:sentiment \
   --repair none mse glp --mse runs/mse/denoiser.pt --glp runs/glp/denoiser.pt \
   --t-start 0.2 0.35 0.5 --device mps
