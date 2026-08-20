@@ -49,6 +49,30 @@ def top_tokens(latent, model, device, n_texts=400, k=20, seq_len=128):
 
 
 @torch.no_grad()
+def frequent_latents(device, k=20, n=200_000):
+    """Latents that fire often, from the cached activations.
+
+    Picking the validation vectors is part of the task, and a latent that fires on one
+    rare token is a bad one: steering it has almost nothing to move, and any concept
+    score built on it is dominated by whether that token happened to appear. Frequency
+    over a corpus is the cheap filter, and it costs one pass over the cache.
+    """
+    acts = torch.load(steering.CACHE / "acts_layer6_500000.pt", map_location="cpu")[:n]
+    ae = steering.autoencoder(device)
+    fired = torch.zeros(ae.encoder.weight.shape[0])
+    total = torch.zeros_like(fired)
+    for i in range(0, len(acts), 8192):
+        latents = ae.encode(acts[i:i + 8192].float().to(device))[0].cpu()
+        fired += (latents > 0).float().sum(0)
+        total += latents.sum(0)
+    freq = fired / len(acts)
+    top = freq.topk(k)
+    return [{"latent": int(i), "freq": round(float(f), 5),
+             "mean_act": round(float(total[i] / fired[i].clamp_min(1)), 3)}
+            for f, i in zip(top.values, top.indices)]
+
+
+@torch.no_grad()
 def logit_lens(v, model, k=15):
     """Tokens the direction pushes towards, read straight off the unembedding.
 
@@ -63,10 +87,12 @@ def logit_lens(v, model, k=15):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--vector", required=True, help="sae:<i> | diffmean:<c>")
+    p.add_argument("--vector", default=None, help="sae:<i> | diffmean:<c>")
     p.add_argument("--concept-words", nargs="+", default=None)
     p.add_argument("--tokens", action="store_true", help="что латент вообще ловит")
     p.add_argument("--lens", action="store_true", help="куда направление толкает логиты")
+    p.add_argument("--frequent", type=int, default=0,
+                   help="показать N самых часто срабатывающих латентов и выйти")
     p.add_argument("--sweep", action="store_true", help="наивный стиринг по alpha")
     p.add_argument("--alphas", type=float, nargs="+", default=[0, 10, 20, 40, 80, 160])
     p.add_argument("--n-samples", type=int, default=8)
@@ -75,6 +101,13 @@ def main():
     p.add_argument("--device", default="cpu")
     args = p.parse_args()
 
+    if args.frequent:
+        for row in frequent_latents(args.device, args.frequent):
+            print(f"латент {row['latent']:>6}  срабатывает на {row['freq'] * 100:6.2f}% "
+                  f"позиций  средняя активация {row['mean_act']:7.3f}")
+        return
+
+    assert args.vector, "нужен --vector или --frequent"
     model = steering.load_model(args.device)
     out = {"vector": args.vector}
 
