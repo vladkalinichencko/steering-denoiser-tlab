@@ -74,7 +74,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--tag", required=True)
     p.add_argument("--objective", choices=["flow", "mse"], default="flow")
-    p.add_argument("--n-vectors", type=int, default=1_000_000)
+    p.add_argument("--n-vectors", type=int, default=500_000)
     p.add_argument("--steps", type=int, default=20_000)
     p.add_argument("--batch-size", type=int, default=1024)
     p.add_argument("--n-blocks", type=int, default=4)

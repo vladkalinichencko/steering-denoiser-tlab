@@ -10,9 +10,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 PY=".venv/bin/python -u"
+N="${N:-500000}"          # столько активаций собрано, кэш в datasets/
 
-$PY baseline.py --vector diffmean:sentiment --sweep --device mps > tmp/base_sentiment.log 2>&1
-$PY train_denoiser.py --tag glp --objective flow --steps 15000 --device mps
-$PY train_denoiser.py --tag mse --objective mse --steps 15000 --device mps
+[ -f runs/check_diffmeansentiment.json ] || \
+  $PY baseline.py --vector diffmean:sentiment --sweep --device mps > tmp/base_sentiment.log 2>&1
+$PY train_denoiser.py --tag glp --objective flow --n-vectors "$N" --steps 15000 --device mps
+$PY train_denoiser.py --tag mse --objective mse --n-vectors "$N" --steps 15000 --device mps
 $PY eval_steering.py --tag pareto_sentiment --vector diffmean:sentiment \
   --repair none mse glp --mse runs/mse/denoiser.pt --glp runs/glp/denoiser.pt --device mps
