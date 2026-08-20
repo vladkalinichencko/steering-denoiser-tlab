@@ -42,7 +42,8 @@ svg { display:block; margin-top:4px; }
 <div id="app"></div>
 <script>
 const DATA = __DATA__;
-const PAL = {none: "#c05621", mse: "#2b6cb0", glp: "#2f855a"};
+const PAL = {none: "#c05621", mse: "#2b6cb0",
+  "glp_t0.2": "#68a678", "glp_t0.35": "#2f855a", "glp_t0.5": "#1a4d33"};
 const SVG = new Set(["svg", "g", "path", "line", "text", "rect", "circle"]);
 function el(tag, attrs, kids) {
   const n = document.createElementNS(SVG.has(tag) ? "http://www.w3.org/2000/svg"
