@@ -124,6 +124,64 @@ def split_vector(v, basis, part):
     return out / out.norm().clamp_min(1e-9)
 
 
+def activation_bank(n, device):
+    """Real activations to snap to, from the same cache the denoisers train on."""
+    acts = torch.load(CACHE / "acts_layer6_500000.pt", map_location="cpu")[:n]
+    return acts.float().to(device)
+
+
+def segment_repair(bank, v, alpha, keep=0.0):
+    """Snap the steered state to the nearest real activation beside the steering segment.
+
+    The idea in its plainest form: we know a hundred thousand states the model actually
+    produces, so instead of trusting a learned prior, walk from h towards h + alpha*v
+    and take the real state closest to that line, among those that lie between the two
+    ends. No training, no prior — the bank *is* the manifold. Whether that is enough is
+    the whole question.
+    """
+    unit = v / v.norm().clamp_min(1e-9)
+
+    @torch.no_grad()
+    def repair(x):
+        start = x - alpha * v
+        offset = bank[None] - start[:, None]           # (позиций, банк, d)
+        along = offset @ unit                           # проекция на направление сдвига
+        perp = (offset - along[..., None] * unit).norm(dim=-1)
+        outside = (along < keep * alpha) | (along > alpha)
+        best = torch.where(outside, torch.full_like(perp, float("inf")), perp).argmin(1)
+        return bank[best]
+
+    return repair
+
+
+def geodesic_hook(v, alpha, bank, steps=8, k=256, dim=16):
+    """Steer in small steps, re-aiming along the local tangent at each one.
+
+    A difference-of-means vector is a global direction. If the set of natural states is
+    curved, that direction stops being tangent after a short distance, and the rest of
+    the move goes through the surface rather than along it. So: move a little, look at
+    the k nearest real states, take their principal directions, project what is left of
+    the move onto them, move again.
+    """
+    unit = v / v.norm().clamp_min(1e-9)
+
+    @torch.no_grad()
+    def hook(resid, hook_ref):
+        shape = resid.shape
+        h = resid.reshape(-1, shape[-1])
+        for _ in range(steps):
+            near = bank[torch.cdist(h, bank).topk(k, largest=False).indices]  # (n, k, d)
+            near = near - near.mean(1, keepdim=True)
+            local = torch.linalg.svd(near, full_matrices=False)[2][:, :dim]   # (n, dim, d)
+            direction = torch.einsum("nkd,d->nk", local, unit)
+            direction = torch.einsum("nk,nkd->nd", direction, local)
+            direction = direction / direction.norm(dim=-1, keepdim=True).clamp_min(1e-9)
+            h = h + (alpha / steps) * direction
+        return h.reshape(shape)
+
+    return hook
+
+
 def make_hook(v, alpha, repair=None, safe=False):
     """h -> repair(h + alpha*v). repair=None is the naive baseline from the task.
 

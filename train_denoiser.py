@@ -54,34 +54,53 @@ def collect_activations(n_vectors, device, seq_len=128):
     return acts
 
 
-def corrupt(z, mode, sigma, generator=None):
-    """Порча в стандартизованном пространстве, поэтому sigma=1 — это масштаб данных."""
+def corrupt(z, mode, sigma, generator=None, basis=None):
+    """Порча в стандартизованном пространстве, поэтому sigma=1 — это масштаб данных.
+
+    -> (испорченное, цель). У всех схем цель это сам z, кроме tangent: там сдвиг вдоль
+    главных направлений считается допустимым и остаётся в цели, а убирать денойзер
+    должен только сдвиг наружу. Так его учат не «возвращать в точку», а «возвращать на
+    поверхность», что ближе к тому, зачем он нужен при стиринге.
+    """
     eps = torch.randn(z.shape, device=z.device, generator=generator) * sigma
     if mode == "additive":
-        return z + eps
+        return z + eps, z
+    if mode == "tangent":
+        eps2 = torch.randn(z.shape, device=z.device, generator=generator) * sigma
+        along = (eps @ basis) @ basis.T
+        out = eps2 - (eps2 @ basis) @ basis.T
+        return z + along + out, z + along
     t = torch.rand(len(z), 1, device=z.device, generator=generator)
-    return t * z + (1 - t) * eps
+    return t * z + (1 - t) * eps, z
 
 
-def batch_loss(net, z, args, generator=None):
+def batch_loss(net, z, args, generator=None, basis=None):
     if args.objective == "flow":
         zt, t, u = denoiser.flow_batch(z, generator)
         return F.mse_loss(net(zt, t), u)
-    return F.mse_loss(net(corrupt(z, args.noise, args.sigma, generator)), z)
+    noisy, target = corrupt(z, args.noise, args.sigma, generator, basis)
+    return F.mse_loss(net(noisy), target)
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--tag", required=True)
-    p.add_argument("--objective", choices=["flow", "mse"], default="flow")
+    p.add_argument("--objective", choices=["flow", "mse", "gpt2mlp"], default="flow",
+                   help="gpt2mlp — та же регрессия, но телом служит собственный MLP GPT-2: "
+                        "вопрос условия, можно ли обойтись без новой сети")
     p.add_argument("--n-vectors", type=int, default=500_000)
     p.add_argument("--steps", type=int, default=20_000)
     p.add_argument("--batch-size", type=int, default=1024)
     p.add_argument("--n-blocks", type=int, default=4)
     p.add_argument("--width", type=int, default=2, help="d_model = width * d_act (GLP: 2)")
     p.add_argument("--expand", type=int, default=2, help="d_ff = expand * d_model (GLP: 2)")
-    p.add_argument("--noise", choices=["interp", "additive"], default="interp",
-                   help="только для objective=mse; interp — формула из условия")
+    p.add_argument("--noise", choices=["interp", "additive", "tangent"], default="interp",
+                   help="только для регрессии. interp и additive — формулы из условия; "
+                        "tangent сохраняет сдвиг вдоль главных направлений и убирает "
+                        "только сдвиг наружу")
+    p.add_argument("--tangent-dim", type=int, default=64)
+    p.add_argument("--init-gpt2", action="store_true",
+                   help="начать с настоящих весов MLP слоя 6, а не со случайных")
     p.add_argument("--sigma", type=float, default=1.0)
     p.add_argument("--lr", type=float, default=3e-4)
     p.add_argument("--val-frac", type=float, default=0.02)
@@ -96,10 +115,14 @@ def main():
     val, train = acts[:n_val].to(args.device).float(), acts[n_val:]
     print(f"активаций: обучение {len(train)}, валидация {len(val)}")
 
-    net = denoiser.Denoiser(acts.shape[-1], args.width, args.expand, args.n_blocks,
-                            "velocity" if args.objective == "flow" else "residual")
+    predict = {"flow": "velocity", "mse": "residual", "gpt2mlp": "gpt2mlp"}[args.objective]
+    net = denoiser.Denoiser(acts.shape[-1], args.width, args.expand, args.n_blocks, predict)
+    if args.init_gpt2:
+        net.body.load_gpt2(steering.load_model("cpu"), steering.LAYER)
     net.set_stats(train[::13].float())
     net = net.to(args.device)
+    basis = (steering.tangent_basis(args.tangent_dim, args.device)
+             if args.noise == "tangent" else None)
     val = net.standardize(val)
     opt = torch.optim.AdamW(net.parameters(), lr=args.lr)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, args.steps)
@@ -117,7 +140,7 @@ def main():
     for step in range(args.steps):
         idx = torch.randint(0, len(train), (args.batch_size,))
         z = net.standardize(train[idx].to(args.device).float())
-        loss = batch_loss(net, z, args)
+        loss = batch_loss(net, z, args, basis=basis)
         loss.backward()
         opt.step()
         opt.zero_grad(set_to_none=True)
@@ -126,7 +149,7 @@ def main():
         if step % args.log_every == 0 or step == args.steps - 1:
             with torch.no_grad():
                 g = torch.Generator(device=args.device).manual_seed(0)  # один и тот же шум
-                vl = batch_loss(net, val, args, g).item()
+                vl = batch_loss(net, val, args, g, basis).item()
             row = {"step": step, "train_loss": loss.item(), "val_loss": vl}
             print(f"шаг {step:>6}  train {loss.item():.4f}  val {vl:.4f}")
             log.write(json.dumps(row) + "\n")

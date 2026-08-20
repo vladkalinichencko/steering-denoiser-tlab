@@ -33,15 +33,21 @@ def load(path, device):
     return net.to(device).eval()
 
 
-def methods(args, nets):
+def methods(args, nets, bank, v, alpha):
     """-> [(подпись, функция починки)]. У GLP t_start — главный рычаг: он решает,
     сколько от правки остаётся и сколько чинится, поэтому это отдельные точки."""
     out = []
     for kind in args.repair:
         if kind == "none":
             out.append(("none", None))
-        elif kind == "mse":
-            out.append(("mse", lambda h: nets["mse"].repair(h)))
+        elif kind in ("mse", "gpt2mlp"):
+            out.append((kind, lambda h, k=kind: nets[k].repair(h)))
+        elif kind == "knn":
+            out.append(("knn", steering.segment_repair(bank, v, alpha) if alpha else None))
+        elif kind == "glp1":
+            for t in args.t_start:
+                out.append((f"glp1_t{t:g}",
+                            lambda h, t=t: denoiser.sdedit_onestep(nets["glp"], h, t)))
         else:
             for t in args.t_start:
                 out.append((f"glp_t{t:g}",
@@ -57,9 +63,18 @@ def main():
                    help="чем мерить концепт: lens — доля токенов, которые продвигает само "
                         "направление; latent — активация латента; см. NOTES про то, что это "
                         "разные вещи")
-    p.add_argument("--repair", nargs="+", default=["none"], choices=["none", "mse", "glp"])
+    p.add_argument("--repair", nargs="+", default=["none"],
+                   choices=["none", "mse", "glp", "glp1", "knn", "gpt2mlp"],
+                   help="glp1 — один шаг вместо двадцати; knn — притянуть к ближайшей "
+                        "настоящей активации рядом с отрезком стиринга")
     p.add_argument("--mse", default=None, help="чекпойнт denoiser(h+eps)->h")
     p.add_argument("--glp", default=None, help="чекпойнт flow matching")
+    p.add_argument("--gpt2mlp", default=None, help="чекпойнт дообученного MLP самой GPT-2")
+    p.add_argument("--geodesic", type=int, default=0,
+                   help="стирить не одним прыжком, а N маленькими шагами, пересчитывая "
+                        "локальное касательное направление")
+    p.add_argument("--bank", type=int, default=100_000,
+                   help="сколько настоящих активаций держать для knn и геодезической")
     p.add_argument("--alphas", type=float, nargs="+", default=[0, 10, 20, 40, 80, 160])
     p.add_argument("--split", nargs="+", default=["none"],
                    choices=["none", "tangent", "normal"],
@@ -80,8 +95,10 @@ def main():
 
     model = steering.load_model(args.device)
     v = steering.vector(args.vector, model, args.device)
-    nets = {k: load(getattr(args, k), args.device) for k in ("mse", "glp")
-            if k in args.repair and getattr(args, k)}
+    nets = {k: load(getattr(args, k), args.device) for k in ("mse", "glp", "gpt2mlp")
+            if getattr(args, k)}
+    bank = (steering.activation_bank(args.bank, args.device)
+            if "knn" in args.repair or args.geodesic else None)
 
     mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
     mlflow.set_experiment("steering")
@@ -95,12 +112,15 @@ def main():
     rows = []
     for part in args.split:
         vec = steering.split_vector(v, basis, part) if part != "none" else v
-        for kind, repair in methods(args, nets):
-            for alpha in args.alphas:
-                hooks = [(steering.HOOK, steering.make_hook(vec, alpha, repair, args.safe))]
-                samples = steering.generate(model, hooks, args.n_samples,
+        for alpha in args.alphas:
+            for kind, repair in methods(args, nets, bank, vec, alpha):
+                hook = (steering.geodesic_hook(vec, alpha, bank, args.geodesic)
+                        if args.geodesic and alpha
+                        else steering.make_hook(vec, alpha, repair, args.safe))
+                samples = steering.generate(model, [(steering.HOOK, hook)], args.n_samples,
                                             args.max_new_tokens, args.seed)
-                label = kind if part == "none" else f"{kind}/{part}"
+                label = "/".join(x for x in (kind, part if part != "none" else None,
+                                             "geo" if args.geodesic else None) if x)
                 row = {"repair": label, "alpha": alpha,
                        **steering.measure(model, samples, args.vector, args.concept_words,
                                           args.concept, vec),
@@ -117,6 +137,7 @@ def main():
                                        step=int(alpha))
                 except Exception as exc:  # логирование не имеет права ронять эксперимент
                     print(f"  mlflow не записал: {exc}", flush=True)
+
     mlflow.log_artifact(str(out))
     mlflow.end_run()
     print(f"-> {out}")

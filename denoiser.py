@@ -43,9 +43,35 @@ def timestep_embedding(t, dim):
     return torch.cat([ang.cos(), ang.sin()], dim=-1)
 
 
+class GPT2MLP(nn.Module):
+    """GPT-2's own MLP shape, optionally starting from its own weights.
+
+    The task asks whether the model's existing MLP can be finetuned on the denoising
+    loss instead of bolting on a new network. This is that module: same 768->3072->768
+    with GELU, so the result can be written straight back into the layer.
+    """
+
+    def __init__(self, d_act=768, d_ff=3072):
+        super().__init__()
+        self.fc = nn.Linear(d_act, d_ff)
+        self.proj = nn.Linear(d_ff, d_act)
+
+    @torch.no_grad()
+    def load_gpt2(self, model, layer):
+        block = model.blocks[layer].mlp
+        self.fc.weight.copy_(block.W_in.T)
+        self.fc.bias.copy_(block.b_in)
+        self.proj.weight.copy_(block.W_out.T)
+        self.proj.bias.copy_(block.b_out)
+
+    def forward(self, x):
+        return self.proj(F.gelu(self.fc(x)))
+
+
 class Denoiser(nn.Module):
     """predict="residual": h_hat = h + net(h), the task's denoiser.
        predict="velocity": u_hat(z, t), the GLP flow-matching field.
+       predict="gpt2mlp":  the same residual form, but the body is GPT-2's own MLP.
 
     Standardisation lives inside the module and travels with the checkpoint, so no
     caller can forget it — GLP normalises activations before training and the scale
@@ -56,11 +82,12 @@ class Denoiser(nn.Module):
         super().__init__()
         d_model, self.predict = width * d_act, predict
         d_t = d_model if predict == "velocity" else 0
-        self.inp = nn.Linear(d_act, d_model)
+        self.body = GPT2MLP(d_act) if predict == "gpt2mlp" else None
+        self.inp = nn.Linear(d_act, d_model) if self.body is None else None
         self.blocks = nn.ModuleList(Block(d_model, expand * d_model, d_t)
-                                    for _ in range(n_blocks))
-        self.norm = nn.RMSNorm(d_model)
-        self.out = nn.Linear(d_model, d_act)
+                                    for _ in range(n_blocks)) if self.body is None else None
+        self.norm = nn.RMSNorm(d_model) if self.body is None else None
+        self.out = nn.Linear(d_model, d_act) if self.body is None else None
         self.t_mlp = nn.Sequential(nn.Linear(d_t, d_t), nn.SiLU(), nn.Linear(d_t, d_t)) \
             if d_t else None
         self.register_buffer("mean", torch.zeros(d_act))
@@ -87,6 +114,8 @@ class Denoiser(nn.Module):
         return self.restore(self(self.standardize(h)))
 
     def forward(self, z, t=None):
+        if self.body is not None:
+            return z + self.body(z)
         temb = None if self.t_mlp is None else self.t_mlp(
             timestep_embedding(t, self.inp.out_features))
         x = self.inp(z)
@@ -118,3 +147,20 @@ def sdedit(net, h, t_start=0.5, steps=20, generator=None):
     for a, b in zip(grid[:-1], grid[1:]):
         z = z + (b - a) * net(z, a.expand(len(z)))
     return net.restore(z)
+
+
+@torch.no_grad()
+def sdedit_onestep(net, h, t_start=0.5, generator=None):
+    """One evaluation instead of twenty: the field taken once and followed all the way.
+
+    The task's own complaint about GLP is that sampling is expensive at inference. If
+    the velocity at t_start already points at the answer, a single Euler step of length
+    t_start lands there — this is the crude version of one-step distillation, and it
+    costs one forward pass. How much it loses against the full trajectory is exactly
+    what the Pareto front will say.
+    """
+    z = net.standardize(h)
+    eps = torch.randn(z.shape, device=z.device, generator=generator)
+    z = (1 - t_start) * z + t_start * eps
+    t = torch.full((len(z),), t_start, device=z.device)
+    return net.restore(z - t_start * net(z, t))
