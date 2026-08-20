@@ -93,14 +93,57 @@ def vector(spec, model, device):
     return sae_vector(int(name), device) if kind == "sae" else diffmean_vector(name, model, device)
 
 
-def make_hook(v, alpha, repair=None):
-    """h -> repair(h + alpha*v). repair=None is the naive baseline from the task."""
+def tangent_basis(dim, device, n=200_000):
+    """Top principal directions of the activation cloud, as a stand-in tangent space.
+
+    The hypothesis worth testing is that a steering vector splits into a part along the
+    directions activations actually occupy and a part pointing out of them, and that
+    the concept rides on the first while the perplexity damage rides on the second.
+    A global PCA is the cheap version of "the manifold"; the honest refinement is a
+    local basis from the neighbours of each h, and that is a separate experiment.
+    """
+    cache = CACHE / f"tangent_{dim}_{n}.pt"
+    if not cache.exists():
+        acts = torch.load(CACHE / "acts_layer6_500000.pt", map_location="cpu")[:n].float()
+        acts = acts - acts.mean(0, keepdim=True)
+        _, _, basis = torch.pca_lowrank(acts, q=dim, niter=4)
+        CACHE.mkdir(exist_ok=True)
+        torch.save(basis, cache)
+    return torch.load(cache, map_location=device).float()
+
+
+def split_vector(v, basis, part):
+    """v -> its component inside the basis ("tangent") or outside it ("normal")."""
+    along = basis @ (basis.T @ v)
+    if part == "tangent":
+        out = along
+    elif part == "normal":
+        out = v - along
+    else:
+        return v
+    return out / out.norm().clamp_min(1e-9)
+
+
+def make_hook(v, alpha, repair=None, safe=False):
+    """h -> repair(h + alpha*v). repair=None is the naive baseline from the task.
+
+    safe=True keeps whatever the repair removed along v: the correction is projected
+    off the steering direction, so the repair can clean the damage without also
+    undoing the edit it was asked to survive.
+    """
+    unit = v / v.norm().clamp_min(1e-9)
+
     def hook(resid, hook):
         out = resid + alpha * v
         if repair is None:
             return out
         shape = out.shape
-        return repair(out.reshape(-1, shape[-1])).reshape(shape)
+        flat = out.reshape(-1, shape[-1])
+        fixed = repair(flat)
+        if safe:
+            correction = fixed - flat
+            fixed = flat + correction - (correction @ unit)[:, None] * unit
+        return fixed.reshape(shape)
     return hook
 
 

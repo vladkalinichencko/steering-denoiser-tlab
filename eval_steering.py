@@ -61,6 +61,13 @@ def main():
     p.add_argument("--mse", default=None, help="чекпойнт denoiser(h+eps)->h")
     p.add_argument("--glp", default=None, help="чекпойнт flow matching")
     p.add_argument("--alphas", type=float, nargs="+", default=[0, 10, 20, 40, 80, 160])
+    p.add_argument("--split", nargs="+", default=["none"],
+                   choices=["none", "tangent", "normal"],
+                   help="стирить полным вектором, его касательной или нормальной частью")
+    p.add_argument("--tangent-dim", type=int, default=64)
+    p.add_argument("--safe", action="store_true",
+                   help="не давать починке отменять саму правку: убрать из поправки "
+                        "составляющую вдоль v")
     p.add_argument("--t-start", type=float, nargs="+", default=[0.5],
                    help="GLP: уровни шума SDEdit; в статье 0.5")
     p.add_argument("--steps", type=int, default=20, help="GLP: шагов обратного ОДУ")
@@ -83,27 +90,33 @@ def main():
 
     out = pathlib.Path("runs") / f"{args.tag}.json"
     out.parent.mkdir(exist_ok=True)
+    basis = (steering.tangent_basis(args.tangent_dim, args.device)
+             if set(args.split) - {"none"} else None)
     rows = []
-    for kind, repair in methods(args, nets):
-        for alpha in args.alphas:
-            hooks = [(steering.HOOK, steering.make_hook(v, alpha, repair))]
-            samples = steering.generate(model, hooks, args.n_samples,
-                                        args.max_new_tokens, args.seed)
-            row = {"repair": kind, "alpha": alpha,
-                   **steering.measure(model, samples, args.vector, args.concept_words,
-                                      args.concept, v),
-                   "sample": samples[0]["cont"]}
-            rows.append(row)
-            print(f"{kind:>8} alpha={alpha:6.1f}  ppl={row['ppl']:8.2f}  "
-                  f"d2={row['dist2']:.3f}  concept={row['concept']:.3f}", flush=True)
-            # пишем после каждой точки: фронт считается часами, и падение на
-            # последней точке не должно стоить всех предыдущих
-            out.write_text(json.dumps({"config": vars(args), "rows": rows}, indent=2))
-            try:
-                mlflow.log_metrics({f"{kind}_{k}": x for k, x in row.items()
-                                    if isinstance(x, float)}, step=int(alpha))
-            except Exception as exc:  # логирование не имеет права ронять эксперимент
-                print(f"  mlflow не записал: {exc}", flush=True)
+    for part in args.split:
+        vec = steering.split_vector(v, basis, part) if part != "none" else v
+        for kind, repair in methods(args, nets):
+            for alpha in args.alphas:
+                hooks = [(steering.HOOK, steering.make_hook(vec, alpha, repair, args.safe))]
+                samples = steering.generate(model, hooks, args.n_samples,
+                                            args.max_new_tokens, args.seed)
+                label = kind if part == "none" else f"{kind}/{part}"
+                row = {"repair": label, "alpha": alpha,
+                       **steering.measure(model, samples, args.vector, args.concept_words,
+                                          args.concept, vec),
+                       "sample": samples[0]["cont"]}
+                rows.append(row)
+                print(f"{label:>16} alpha={alpha:6.1f}  ppl={row['ppl']:8.2f}  "
+                      f"d2={row['dist2']:.3f}  concept={row['concept']:.3f}", flush=True)
+                # пишем после каждой точки: фронт считается часами, и падение на
+                # последней точке не должно стоить всех предыдущих
+                out.write_text(json.dumps({"config": vars(args), "rows": rows}, indent=2))
+                try:
+                    mlflow.log_metrics({f"{label.replace('/', '_')}_{k}": x
+                                        for k, x in row.items() if isinstance(x, float)},
+                                       step=int(alpha))
+                except Exception as exc:  # логирование не имеет права ронять эксперимент
+                    print(f"  mlflow не записал: {exc}", flush=True)
     mlflow.log_artifact(str(out))
     mlflow.end_run()
     print(f"-> {out}")
