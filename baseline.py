@@ -1,161 +1,93 @@
-"""Naive steering baseline: h <- h + alpha * v after layer 6 of GPT-2.
+"""Validate a steering vector before steering with it.
 
-Sweeps alpha and reports the fluency / concept trade-off, i.e. the Pareto front
-every improved method has to beat. Writes runs/<tag>.json.
+Step 3 of the task is "check you get a picture like the example", and the picture is
+only meaningful if the vector means what its name says. Two checks:
 
-    python baseline.py --latent 0 --alphas 0 20 40 80 160
+    --tokens   the tokens that fire this SAE latent hardest, straight from text
+    --sweep    the naive h -> h + alpha*v front (same numbers as eval_steering.py)
+
+    python baseline.py --vector sae:27677 --tokens
+    python baseline.py --vector diffmean:sentiment --sweep
 """
 
 import argparse
 import json
-import os
 import pathlib
 
-import mlflow
 import torch
-import transformer_lens
 
-LAYER = 6
-HOOK = f"blocks.{LAYER}.hook_resid_post"
-LOCATION = "resid_post_mlp"
-
-PROMPTS = [
-    "The weather today is",
-    "My favourite thing about this city is",
-    "I spent the afternoon",
-    "He opened the door and",
-    "The report concluded that",
-    "She told me that",
-]
+import steering
 
 
-def sae_vector(latent: int, device: str) -> torch.Tensor:
-    """Unit-norm decoder column `latent` of the OpenAI v5_32k SAE."""
+@torch.no_grad()
+def top_tokens(latent, model, device, n_texts=400, k=20, seq_len=128):
+    """Tokens with the largest activation of SAE latent `latent`, with context."""
     import blobfile as bf
     import sparse_autoencoder
+    from datasets import load_dataset
 
-    with bf.BlobFile(sparse_autoencoder.paths.v5_32k(LOCATION, LAYER), mode="rb") as f:
-        state_dict = torch.load(f)
-    autoencoder = sparse_autoencoder.Autoencoder.from_state_dict(state_dict)
-    v = autoencoder.decoder.weight[:, latent].detach().to(device).float()
-    return v / v.norm()
+    with bf.BlobFile(sparse_autoencoder.paths.v5_32k("resid_post_mlp", steering.LAYER), "rb") as f:
+        ae = sparse_autoencoder.Autoencoder.from_state_dict(torch.load(f)).to(device)
 
-
-def steer(v: torch.Tensor, alpha: float):
-    def hook(resid, hook):
-        return resid + alpha * v
-
-    return hook
-
-
-@torch.no_grad()
-def generate(model, v, alpha, n_samples, max_new_tokens, seed):
-    """n_samples continuations per prompt, steered with alpha * v."""
-    torch.manual_seed(seed)
-    hooks = [(HOOK, steer(v, alpha))] if alpha != 0 else []
-    samples = []
-    with model.hooks(fwd_hooks=hooks):
-        for prompt in PROMPTS:
-            tokens = model.to_tokens([prompt] * n_samples)
-            out = model.generate(
-                tokens,
-                max_new_tokens=max_new_tokens,
-                do_sample=True,
-                temperature=1.0,
-                top_k=50,
-                verbose=False,
-            )
-            n_prompt = tokens.shape[1]
-            samples += [
-                {
-                    "text": model.to_string(row),
-                    "cont": model.to_string(row[n_prompt:]),
-                    "n_prompt": n_prompt,
-                }
-                for row in out
-            ]
-    return samples
-
-
-@torch.no_grad()
-def perplexity(model, samples):
-    """Perplexity of the continuations (prompt excluded) under the *clean* model."""
-    losses = []
-    for s in samples:
-        tokens = model.to_tokens(s["text"])
-        loss = model(tokens, return_type="loss", loss_per_token=True)[0]
-        losses.append(loss[s["n_prompt"] - 1 :].mean().item())
-    return float(torch.tensor(losses).mean().exp())
-
-
-def dist_n(texts, n):
-    grams, total = set(), 0
-    for text in texts:
-        words = text.split()
-        for i in range(len(words) - n + 1):
-            grams.add(tuple(words[i : i + n]))
-            total += 1
-    return len(grams) / max(total, 1)
-
-
-def concept_score(texts, words):
-    """Placeholder for an LLM judge: share of generations mentioning the concept."""
-    words = [w.lower() for w in words]
-    hits = sum(any(w in t.lower() for w in words) for t in texts)
-    return hits / max(len(texts), 1)
+    stream = load_dataset("HuggingFaceFW/fineweb", name="sample-10BT",
+                          split="train", streaming=True)
+    hits = []
+    for i, example in enumerate(stream):
+        if i >= n_texts:
+            break
+        tokens = model.to_tokens(example["text"])[:, :seq_len]
+        if tokens.shape[1] < 8:
+            continue
+        _, out = model.run_with_cache(tokens, names_filter=steering.HOOK)
+        acts = ae.encode(out[steering.HOOK][0])[:, latent]
+        for pos in acts.topk(min(3, len(acts))).indices.tolist():
+            hits.append((float(acts[pos]), model.to_string(tokens[0, pos]),
+                         model.to_string(tokens[0, max(0, pos - 8):pos + 1])))
+    hits.sort(reverse=True)
+    return hits[:k]
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--latent", type=int, required=True, help="SAE decoder column")
-    p.add_argument("--concept-words", nargs="+", required=True)
-    p.add_argument("--alphas", type=float, nargs="+", default=[0, 20, 40, 80, 160])
+    p.add_argument("--vector", required=True, help="sae:<i> | diffmean:<c>")
+    p.add_argument("--concept-words", nargs="+", default=None)
+    p.add_argument("--tokens", action="store_true", help="что латент вообще ловит")
+    p.add_argument("--sweep", action="store_true", help="наивный стиринг по alpha")
+    p.add_argument("--alphas", type=float, nargs="+", default=[0, 10, 20, 40, 80, 160])
     p.add_argument("--n-samples", type=int, default=8)
     p.add_argument("--max-new-tokens", type=int, default=30)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--device", default="cpu")
-    p.add_argument("--tag", default=None)
     args = p.parse_args()
 
-    model = transformer_lens.HookedTransformer.from_pretrained(
-        "gpt2", center_writing_weights=False, device=args.device
-    )
-    model.eval()
-    v = sae_vector(args.latent, args.device)
+    model = steering.load_model(args.device)
+    out = {"vector": args.vector}
 
-    mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
-    mlflow.set_experiment("steering")
-    mlflow.start_run(run_name=args.tag or f"baseline_latent{args.latent}")
-    mlflow.log_params({k: str(v)[:250] for k, v in vars(args).items()})
+    if args.tokens:
+        kind, name = args.vector.split(":")
+        assert kind == "sae", "топ-токены есть только у латента SAE"
+        out["top_tokens"] = top_tokens(int(name), model, args.device)
+        for act, tok, ctx in out["top_tokens"]:
+            print(f"{act:8.3f}  {tok!r:20} …{ctx}")
 
-    rows = []
-    for alpha in args.alphas:
-        samples = generate(model, v, alpha, args.n_samples, args.max_new_tokens, args.seed)
-        conts = [s["cont"] for s in samples]
-        rows.append(
-            {
-                "alpha": alpha,
-                "ppl": perplexity(model, samples),
-                "dist1": dist_n(conts, 1),
-                "dist2": dist_n(conts, 2),
-                "dist3": dist_n(conts, 3),
-                "concept": concept_score(conts, args.concept_words),
-                "sample": samples[0]["text"],
-            }
-        )
-        r = rows[-1]
-        print(f"alpha={alpha:6.1f}  ppl={r['ppl']:8.2f}  d1={r['dist1']:.3f} "
-              f"d2={r['dist2']:.3f} d3={r['dist3']:.3f}  concept={r['concept']:.2f}")
-        mlflow.log_metrics(
-            {k: v for k, v in r.items() if k != "sample"}, step=int(alpha)
-        )
+    if args.sweep:
+        v = steering.vector(args.vector, model, args.device)
+        out["rows"] = []
+        for alpha in args.alphas:
+            hooks = [(steering.HOOK, steering.make_hook(v, alpha))]
+            samples = steering.generate(model, hooks, args.n_samples,
+                                        args.max_new_tokens, args.seed)
+            row = {"alpha": alpha,
+                   **steering.measure(model, samples, args.vector, args.concept_words),
+                   "sample": samples[0]["cont"]}
+            out["rows"].append(row)
+            print(f"alpha={alpha:6.1f}  ppl={row['ppl']:8.2f}  d2={row['dist2']:.3f}  "
+                  f"concept={row['concept']:.3f}  {row['sample']!r}")
 
-    tag = args.tag or f"baseline_latent{args.latent}"
-    out = pathlib.Path("runs") / f"{tag}.json"
-    out.write_text(json.dumps({"config": vars(args), "rows": rows}, indent=2))
-    mlflow.log_artifact(str(out))
-    mlflow.end_run()
-    print(f"-> {out}")
+    path = pathlib.Path("runs") / f"check_{args.vector.replace(':', '')}.json"
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(out, indent=2))
+    print(f"-> {path}")
 
 
 if __name__ == "__main__":
