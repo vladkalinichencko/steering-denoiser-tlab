@@ -17,4 +17,5 @@ N="${N:-500000}"          # столько активаций собрано, к
 $PY train_denoiser.py --tag glp --objective flow --n-vectors "$N" --steps 15000 --device mps
 $PY train_denoiser.py --tag mse --objective mse --n-vectors "$N" --steps 15000 --device mps
 $PY eval_steering.py --tag pareto_sentiment --vector diffmean:sentiment \
-  --repair none mse glp --mse runs/mse/denoiser.pt --glp runs/glp/denoiser.pt --device mps
+  --repair none mse glp --mse runs/mse/denoiser.pt --glp runs/glp/denoiser.pt \
+  --t-start 0.2 0.35 0.5 --device mps

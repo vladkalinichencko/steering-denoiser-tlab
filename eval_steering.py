@@ -33,12 +33,20 @@ def load(path, device):
     return net.to(device).eval()
 
 
-def repair_fn(kind, nets, t_start, steps):
-    if kind == "none":
-        return None
-    if kind == "mse":
-        return lambda h: nets["mse"](h)
-    return lambda h: denoiser.sdedit(nets["glp"], h, t_start, steps)
+def methods(args, nets):
+    """-> [(подпись, функция починки)]. У GLP t_start — главный рычаг: он решает,
+    сколько от правки остаётся и сколько чинится, поэтому это отдельные точки."""
+    out = []
+    for kind in args.repair:
+        if kind == "none":
+            out.append(("none", None))
+        elif kind == "mse":
+            out.append(("mse", lambda h: nets["mse"](h)))
+        else:
+            for t in args.t_start:
+                out.append((f"glp@{t:g}",
+                            lambda h, t=t: denoiser.sdedit(nets["glp"], h, t, args.steps)))
+    return out
 
 
 def main():
@@ -49,7 +57,8 @@ def main():
     p.add_argument("--mse", default=None, help="чекпойнт denoiser(h+eps)->h")
     p.add_argument("--glp", default=None, help="чекпойнт flow matching")
     p.add_argument("--alphas", type=float, nargs="+", default=[0, 10, 20, 40, 80, 160])
-    p.add_argument("--t-start", type=float, default=0.5, help="GLP: уровень шума SDEdit")
+    p.add_argument("--t-start", type=float, nargs="+", default=[0.5],
+                   help="GLP: уровни шума SDEdit; в статье 0.5")
     p.add_argument("--steps", type=int, default=20, help="GLP: шагов обратного ОДУ")
     p.add_argument("--n-samples", type=int, default=8)
     p.add_argument("--max-new-tokens", type=int, default=30)
@@ -69,8 +78,7 @@ def main():
     mlflow.log_params({k: str(x)[:250] for k, x in vars(args).items()})
 
     rows = []
-    for kind in args.repair:
-        repair = repair_fn(kind, nets, args.t_start, args.steps)
+    for kind, repair in methods(args, nets):
         for alpha in args.alphas:
             hooks = [(steering.HOOK, steering.make_hook(v, alpha, repair))]
             samples = steering.generate(model, hooks, args.n_samples,
