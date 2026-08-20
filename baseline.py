@@ -39,7 +39,7 @@ def top_tokens(latent, model, device, n_texts=400, k=20, seq_len=128):
         if tokens.shape[1] < 8:
             continue
         _, out = model.run_with_cache(tokens, names_filter=steering.HOOK)
-        acts = ae.encode(out[steering.HOOK][0])[:, latent]
+        acts = ae.encode(out[steering.HOOK][0])[0][:, latent]  # encode -> (latents, info)
         for pos in acts.topk(min(3, len(acts))).indices.tolist():
             hits.append((float(acts[pos]), model.to_string(tokens[0, pos]),
                          model.to_string(tokens[0, max(0, pos - 8):pos + 1])))
