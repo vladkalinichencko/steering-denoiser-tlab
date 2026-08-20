@@ -130,7 +130,7 @@ def main():
             samples = steering.generate(model, hooks, args.n_samples,
                                         args.max_new_tokens, args.seed)
             row = {"alpha": alpha,
-                   **steering.measure(model, samples, args.vector, args.concept_words),
+                   **steering.measure(model, samples, args.vector, args.concept_words, v=v),
                    "sample": samples[0]["cont"]}
             out["rows"].append(row)
             print(f"alpha={alpha:6.1f}  ppl={row['ppl']:8.2f}  d2={row['dist2']:.3f}  "

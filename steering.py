@@ -173,23 +173,43 @@ def latent_score(texts, latent, model):
     return sum(peaks) / max(len(peaks), 1)
 
 
+@torch.no_grad()
+def lens_score(texts, v, model, k=50):
+    """Share of generated tokens among the top-k the direction itself promotes.
+
+    For an SAE latent the encoder and the decoder mean different things — the latent
+    fires on one thing and its decoder column writes another (see NOTES) — so asking
+    "does the latent fire on the output" tests the wrong half. A steering vector is
+    defined by what it writes, and this counts exactly that.
+    """
+    promoted = set((model.ln_final(v[None]) @ model.W_U)[0].topk(k).indices.tolist())
+    hits = total = 0
+    for text in texts:
+        ids = model.to_tokens(text if text.strip() else ".")[0, 1:].tolist()
+        hits += sum(i in promoted for i in ids)
+        total += len(ids)
+    return hits / max(total, 1)
+
+
 def keyword_score(texts, words):
     words = [w.lower() for w in words]
     return sum(any(w in t.lower() for w in words) for t in texts) / max(len(texts), 1)
 
 
-def measure(model, samples, spec, words=None):
+def measure(model, samples, spec, words=None, concept_mode="auto", v=None):
     """Обе оси парето. Ось концепта зависит от того, чем задан вектор.
 
-    diffmean — классификатор тональности; sae — активация самого латента; список слов
-    остаётся запасным вариантом, если он передан явно.
+    diffmean — классификатор тональности; sae — доля токенов, которые само направление
+    и продвигает; список слов и активация латента остаются как явные варианты.
     """
     conts = [s["cont"] for s in samples]
     kind, name = spec.split(":")
-    if words:
-        concept = keyword_score(conts, words)
-    elif kind == "sae":
+    if words or concept_mode == "words":
+        concept = keyword_score(conts, words or [])
+    elif concept_mode == "latent" or (concept_mode == "auto" and kind == "sae" and v is None):
         concept = latent_score(conts, int(name), model)
+    elif concept_mode == "lens" or (concept_mode == "auto" and kind == "sae"):
+        concept = lens_score(conts, v, model)
     else:
         concept = sentiment_score(conts)
     return {"ppl": perplexity(model, samples),

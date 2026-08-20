@@ -53,6 +53,10 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--vector", default="diffmean:sentiment", help="sae:<i> | diffmean:<c>")
     p.add_argument("--concept-words", nargs="+", default=None, help="только для sae:*")
+    p.add_argument("--concept", default="auto", choices=["auto", "lens", "latent", "words"],
+                   help="чем мерить концепт: lens — доля токенов, которые продвигает само "
+                        "направление; latent — активация латента; см. NOTES про то, что это "
+                        "разные вещи")
     p.add_argument("--repair", nargs="+", default=["none"], choices=["none", "mse", "glp"])
     p.add_argument("--mse", default=None, help="чекпойнт denoiser(h+eps)->h")
     p.add_argument("--glp", default=None, help="чекпойнт flow matching")
@@ -86,7 +90,8 @@ def main():
             samples = steering.generate(model, hooks, args.n_samples,
                                         args.max_new_tokens, args.seed)
             row = {"repair": kind, "alpha": alpha,
-                   **steering.measure(model, samples, args.vector, args.concept_words),
+                   **steering.measure(model, samples, args.vector, args.concept_words,
+                                      args.concept, v),
                    "sample": samples[0]["cont"]}
             rows.append(row)
             print(f"{kind:>8} alpha={alpha:6.1f}  ppl={row['ppl']:8.2f}  "
