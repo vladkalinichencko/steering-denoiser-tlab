@@ -76,6 +76,16 @@ class Denoiser(nn.Module):
     def restore(self, z):
         return z * self.std + self.mean
 
+    @torch.no_grad()
+    def repair(self, h):
+        """One regression, in and out of standardised space.
+
+        The network is trained on standardised activations, so a caller that hands it
+        a raw residual-stream vector gets nonsense — and nothing in the shapes says so.
+        This is the only entry point inference should use.
+        """
+        return self.restore(self(self.standardize(h)))
+
     def forward(self, z, t=None):
         temb = None if self.t_mlp is None else self.t_mlp(
             timestep_embedding(t, self.inp.out_features))

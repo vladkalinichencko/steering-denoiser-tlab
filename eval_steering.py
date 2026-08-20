@@ -41,7 +41,7 @@ def methods(args, nets):
         if kind == "none":
             out.append(("none", None))
         elif kind == "mse":
-            out.append(("mse", lambda h: nets["mse"](h)))
+            out.append(("mse", lambda h: nets["mse"].repair(h)))
         else:
             for t in args.t_start:
                 out.append((f"glp@{t:g}",
