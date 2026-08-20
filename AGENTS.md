@@ -8,7 +8,12 @@
 | путь | что там | в git |
 |---|---|---|
 | `NOTES.md` | задание, сетап, лог, идеи, результаты | да |
-| `baseline.py` | наивный стиринг `h + alpha*v`, парето-кривая | да |
+| `steering.py` | точка врезки, промпты, векторы, обе оси парето — общее для всех | да |
+| `denoiser.py` | сеть активаций: цель-регрессия и flow matching + SDEdit | да |
+| `baseline.py` | проверка вектора: топ-токены латента и наивный свип по alpha | да |
+| `train_denoiser.py` | обучение `--objective mse` или `flow` на одних данных | да |
+| `eval_steering.py` | три фронта на одних промптах: none / mse / glp | да |
+| `run_steering.sh` | весь протокол по порядку | да |
 | `report.md` | финальный отчёт (создаётся в конце) | да |
 | `datasets/` | корпуса для обучения денойзера, кэш активаций | нет |
 | `runs/` | чекпойнты, json с метриками, графики | нет |
@@ -23,7 +28,10 @@
   Там можно что угодно, но пиши по-человечески читаемо — это придётся перечитывать.
 - Из `tmp/` в корень переезжает только то, что доказало пользу, — причёсанным и со
   строкой в NOTES → «Лог».
-- `baseline.py` не трогаем: это точка отсчёта, её числа должны воспроизводиться.
+- Обе оси парето считаются `steering.measure`, и только им. Разные определения ppl
+  или концепта у разных методов — это разные графики, а не сравнение.
+- Денойзер и GLP отличаются только `--objective`: архитектура, стандартизация и
+  данные общие, иначе сравниваются заодно и они.
 - Артефакты запусков только в `runs/<tag>/`. Никаких чекпойнтов в корне.
 - Никаких новых зависимостей без записи в `requirements.txt`.
 - Валидационные векторы $v$ фиксируются в NOTES → «Сетап» **до** обучения денойзера.
@@ -34,7 +42,12 @@
 
 ```bash
 source .venv/bin/activate
-python baseline.py --latent <idx> --concept-words <w1> <w2> --alphas 0 20 40 80 160
+./run_steering.sh                                    # весь протокол
+python baseline.py --vector sae:27677 --tokens        # что латент ловит на самом деле
+python baseline.py --vector diffmean:sentiment --sweep
+python train_denoiser.py --tag glp --objective flow --device mps
+python eval_steering.py --tag pareto --vector diffmean:sentiment \
+    --repair none mse glp --mse runs/mse/denoiser.pt --glp runs/glp/denoiser.pt
 ```
 
 ## Что сдаём
