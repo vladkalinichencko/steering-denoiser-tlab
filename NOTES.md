@@ -100,57 +100,72 @@ LLM Activations* (GLP). <https://generative-latent-prior.github.io/>
 
 ---
 
-## Сетап
+## Зафиксированный протокол
 
-| поле | значение |
+| поле | решение |
 |---|---|
-| LM | GPT-2 |
-| активация | `blocks.6.hook_resid_post`, размерность 768 |
-| train data | FineWeb, все позиции кроме BOS, document-level train/validation split |
-| validation directions | заранее фиксированные held-out SAE directions и contrastive directions |
-| область интервенции | только генерируемые response tokens; prompt и специальные токены не меняются |
-| strength | относительная шкала по средней норме активации, включая нулевую точку |
-| quality | conditional continuation NLL/perplexity под чистой GPT-2 |
-| property | scorer, зафиксированный вместе с каждым validation direction |
-| локальная проверка | MPS, один seed, не больше 30 минут на метод |
-| полный запуск | A100, общий evaluation path, финальные методы с повторными seeds |
+| LM и точка вмешательства | GPT-2, `blocks.6.hook_resid_post`, \(d=768\) |
+| данные денойзеров | FineWeb, context до 1024, все non-BOS позиции; 98/2 train/validation по hash документа; validation directions при обучении не используются |
+| масштаб обучения | Mac smoke: первые 100k train activations; A100 screening/final: 100M activations, один проход; это reduced-scale проверка, а не буквальные 1B GLP |
+| optimizer | AdamW, batch 4096 на A100, learning rate \(5\cdot10^{-5}\), cosine decay, warmup 1%; Mac batch выбирается по памяти без изменения effective batch |
+| checkpoints | validation objective на фиксированном наборе каждые 1000 updates; сохраняются best и final; final methods повторяются с seeds 0/1/2 |
+| основная direction | positive-sentiment DiffMean по SST-5 train: усреднить non-BOS states внутри каждого текста, затем взять разность class means; contrast data, prompts и generations не пересекаются |
+| дополнительная проверка | OpenAI GPT-2 SAE directions только после отдельной проверки decoded effect; SAE encoder activation не считается property score |
+| prompts | 100 neutral OpenWebText prefixes из DExperts, один и тот же зафиксированный список для всех методов |
+| intervention scope | только новые response tokens; prompt, BOS и другие special tokens не меняются |
+| generation | 20 новых токенов, temperature 1.0, top-k 50; Mac: seed 0 и 1 continuation/prompt; A100: seeds 0/1/2 и 5 continuations/prompt |
+| steering strength | \(\alpha=r\,\overline{\lVert h\rVert_2}\), \(r\in\{0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0\}\) |
+| property | mean positive probability локального SST-2 classifier по continuation; полный score distribution сохраняется |
+| quality | conditional continuation NLL и perplexity под чистой GPT-2; dist-1/2/3 остаются дополнительной diversity-диагностикой |
+| uncertainty | 95% bootstrap interval по prompt, 1000 resamples; одинаковые prompt/seed pairs между методами |
+| порядок | validation direction и naive steering; MSE и GLP; ускорения; geometry; conditional methods; общий Pareto |
+| локальный запуск | MPS, тот же код и настоящая архитектура, подмножество train documents, максимум 30 минут; результатом метода не считается |
+| полный запуск | A100, полный train split; screening одним seed, финал тремя seeds |
+
+## Общая архитектура денойзеров
+
+Все unconditional denoisers получают одну стандартизованную активацию \(z\in\mathbb{R}^{768}\), поэтому attention не нужен. Simple MSE из задания использует один residual block `RMSNorm → Linear(768,3072) → GELU → Linear(3072,768)`. GLP и capacity-matched MSE используют `Linear(768,1536)`, четыре residual SwiGLU-блока с RMSNorm и hidden size 3072, затем `RMSNorm` и `Linear(1536,768)`. Additive MSE без времени получает только \(z\). Остальные flow/interpolation методы получают sinusoidal embeddings нужных времён через multiplicative modulation каждого SwiGLU gate.
 
 ## Эксперименты
 
-| эксперимент | идея | код | статус | данные | результат | диагностика |
-|---|---|---|---|---|---|---|
-| 1. Чистый cache активаций | Обучать priors на естественных non-BOS состояниях и делить документы, а не отдельные токены | [сбор](train_denoiser.py) | повторить | — | — | noise tolerance, density, spectrum |
-| 2. Валидация steering directions | До обучения проверить, что direction вызывает заявленное свойство в генерациях; encoder activations и decoder effect смотреть отдельно | [baseline](baseline.py) | выбрать held-out набор | [старый SAE pilot](logs/check_sae27677.json), [второй latent](logs/pareto_sae4875.json) | Для двух проверенных latents encoder response не совпал с decoder steering effect | tokens, logits, generations, alpha ablation |
-| 3. Толерантность к случайному шуму | Найти масштаб, с которого isotropic perturbation меняет качество и внутреннюю динамику | — | не начато | — | — | quality по sigma, trajectories, downstream drift |
-| 4. Наивный линейный steering | Общая точка отсчёта без repair | [baseline](baseline.py), [evaluation](eval_steering.py) | повторить на новом path | [старый pilot](logs/check_diffmeansentiment.json) | — | Pareto, generations, tensor path |
-| 5. GLP + SDEdit | Flow matching учит распределение активаций; многократное reverse integration возвращает steered state в вероятную область | [model](denoiser.py), [train](train_denoiser.py), [eval](eval_steering.py) | повторить | [старый train log](logs/glp_history.jsonl), [старый Pareto](logs/pareto_sentiment.json) | — | flow loss, generated/real geometry, denoising trajectory |
-| 6. MSE denoiser | Сравнить additive Gaussian и interpolation corruption в простой MLP и в общем с GLP backbone без timestep conditioning | [model](denoiser.py), [train](train_denoiser.py) | interpolation повторить; остальные варианты не запущены | [старый train log](logs/mse_history.jsonl) | — | clean reconstruction, repair residual, Pareto |
-| 7. Дообученный MLP GPT-2 | Использовать существующий MLP среднего слоя как denoiser без новой inference-сети | [model](denoiser.py), [train](train_denoiser.py) | код есть, не запущен | — | — | weight drift, clean/steered behavior, Pareto |
-| 8. Tangent-preserving denoiser | Сохранять локальную variation вдоль tangent basis и удалять normal corruption; safe-вариант не удаляет компонент correction вдоль direction | [train](train_denoiser.py), [repair](steering.py) | код есть, не запущен | — | — | local basis, tangent/normal residual, causal ablations |
-| 9. Selective repair | Применять denoiser только там, где согласованный departure score показывает повреждение | — | обсудить score до кода | [старый gated pilot](runs/steering_gated.json) | — | score calibration, repaired-token map, generations |
-| 10. Ближайшие реальные активации | Возвращать state к activation bank: nearest neighbour или ближайшая точка рядом с steering segment | [repair](steering.py) | код segment repair есть, не запущен | — | — | neighbour panel, distance, copied-state failures |
-| 11. Tangent/normal decomposition | Разложить direction в локальном basis и причинно проверить, где находятся property effect и quality damage | [split](steering.py), [eval](eval_steering.py) | повторить с non-BOS local basis | [старый global-PCA pilot](logs/split_sentiment.json) | — | full/tangent/normal Pareto, local residual, spectra |
-| 12. Локальная геодезическая | Идти маленькими шагами и после каждого шага пересчитывать local tangent direction | [prototype](steering.py) | heuristic-код есть, не запущен | — | — | curved trajectory, step utility, density |
-| 13. Curveball Steering | Делать нелинейную интервенцию в polynomial-kernel PCA coordinates и возвращаться через preimage | — | не начато | — | — | distortion, latent path, reconstruction error |
-| 14. Одношаговый Euler GLP | Один раз вычислить instantaneous velocity; дешёвый контроль, не MeanFlow | [repair](denoiser.py), [eval](eval_steering.py) | код есть, не запущен | — | — | endpoint error против 20-step GLP, latency, Pareto |
-| 15. Дистилляция GLP | Учить one-step student воспроизводить endpoints многократного GLP; consistency-вариант требует согласованности по разным noise levels | — | не начато | — | — | teacher/student trajectories, endpoint error, latency |
-| 16. Rectified Flow | Выпрямлять transport paths, чтобы coarse или one-step integration меньше ошибалась | — | не начато | — | — | path curvature, one/few-step error, Pareto |
-| 17. MeanFlow | Учить average velocity между текущим и конечным временем и сразу предсказывать полный one-step displacement | — | не начато | — | — | average/instantaneous velocity, endpoint error, Pareto |
-| 18. Conditional nonlinear field | Учить input-dependent direction по state и текстовому условию; UniSteer-вариант делает conditional flow inversion | — | не начато | — | — | field trajectories, condition ablation, composition tests |
-| 19. INNSteer | Учить invertible coordinates, где property отделяется линейно; обратное отображение даёт нелинейный input-dependent path | — | не начато | — | — | invertibility error, latent/original trajectories, Pareto |
-| 20. Prior как training constraint | Использовать GLP energy только во время обучения прямого steering function или LM MLP, без repair на inference | — | не начато | — | — | train-time energy, inference trajectory, no-prior ablation |
-| 21. Финальное сравнение | Все прошедшие baseline-проверку методы на одних directions, prompts, seeds и alpha scale | [HTML](viz.py) | не начато | — | — | общий HTML с Pareto, trajectories и failure gallery |
+| № | метод | что именно учим и делаем | код | статус | данные | результат | HTML |
+|---|---|---|---|---|---|---|---|
+| 1 | Validation direction | Проверить decoded property effect на полном alpha sweep до обучения repair; encoder и decoder стороны SAE проверяются раздельно | [baseline](baseline.py) | повторить | [SAE pilot](logs/check_sae27677.json), [latent 4875](logs/pareto_sae4875.json) | Два проверенных SAE decoder vectors не дали ожидаемого encoder effect | — |
+| 2 | Noise tolerance | \(x=h+\sigma\epsilon\); найти, когда random noise меняет NLL, генерацию и downstream state | — | не начато | — | — | — |
+| 3 | Naive | \(R(x)=x,\ x=h+\alpha v\); обязательная общая точка отсчёта | [baseline](baseline.py), [eval](eval_steering.py) | повторить | [старый pilot](logs/check_diffmeansentiment.json) | — | — |
+| 4 | Additive MSE | Fixed-noise regression \(D(h+\sigma\epsilon)\to h\); один вызов, времени на входе нет; отдельно simple MLP и capacity-matched GLP body без timestep conditioning | [model](denoiser.py), [train](train_denoiser.py) | не запущен | — | — | — |
+| 5 | Interpolation MSE | \(z_t=(1-t)h+t\epsilon\), сеть получает \(z_t,t\) и прямо предсказывает \(h\); один вызов | [model](denoiser.py), [train](train_denoiser.py) | текущий вариант повторить с \(t\)-conditioning | [старый train](logs/mse_history.jsonl) | — | — |
+| 6 | GLP + SDEdit | Сеть предсказывает instantaneous velocity \(u_\theta(z_t,t)\approx\epsilon-h\); edited state зашумляется до \(t=0.5\), затем 20 Euler-шагов к \(t=0\) | [model](denoiser.py), [train](train_denoiser.py), [eval](eval_steering.py) | повторить | [старый train](logs/glp_history.jsonl), [старый Pareto](logs/pareto_sentiment.json) | — | — |
+| 7 | One-Euler GLP | Один большой шаг старого GLP \(z_0\approx z_t-t\,u_\theta(z_t,t)\); без нового обучения, контроль ошибки интегратора | [model](denoiser.py), [eval](eval_steering.py) | код есть, не запущен | — | — | — |
+| 8 | GLP endpoint distillation | Unconditional student \(S(z_t,t)\) повторяет endpoint 20-step GLP на random-corrupted natural activations; validation directions не видит | — | не начато | — | — | — |
+| 9 | Consistency model | Endpoint network \(f_\theta(z_t,t)\to z_0\); точки одной teacher/EMA trajectory должны давать одинаковый endpoint, boundary \(f(z_0,0)=z_0\) задаётся skip connection | — | не начато | — | — | — |
+| 10 | Rectified Flow | После teacher flow собрать пары noise/endpoints и переучить velocity на более прямые paths; сравнить 1/2/4 шага | — | не начато | — | — | — |
+| 11 | MeanFlow | Сеть \(u_\theta(z_t,r,t)\) предсказывает average velocity на всём интервале \([r,t]\), то есть полный displacement за один шаг; objective требует JVP identity | — | не начато | — | — | — |
+| 12 | Flow Map Matching | Сеть \(F_\theta(z_t,r,t)\) сразу предсказывает точку в другом времени; semigroup consistency сравнивает один большой переход с двумя малыми | — | не начато | — | — | — |
+| 13 | Shortcut model | Сеть получает current time и step size \(d\); один большой displacement обучается совпадать с двумя рекурсивными half-steps, поэтому одна сеть поддерживает 1/2/4 шага | — | не начато | — | — | — |
+| 14 | Nearest activation | Без обучения заменить \(x\) ближайшей real non-BOS activation; нижняя граница для методов, использующих activation bank | [repair](steering.py) | не начато | — | — | — |
+| 15 | Segment-kNN | Среди real activations с проекцией вдоль отрезка \([h,h+\alpha v]\) выбрать точку с минимальной perpendicular distance | [repair](steering.py) | код есть, не запущен | — | — | — |
+| 16 | Tangent/normal ablation | Для local SVD basis \(U(h)\): \(v_T=UU^Tv,\ v_N=(I-UU^T)v\); сравнить full, tangent и normal steering причинно | [split](steering.py), [eval](eval_steering.py) | повторить локально | [старый global-PCA pilot](logs/split_sentiment.json) | — | — |
+| 17 | Tangent-preserving MSE | Сэмплировать tangent noise \(\tau=UU^T\epsilon_1\) и normal noise \(\nu=(I-UU^T)\epsilon_2\); учить \(D(h+\tau+\nu)\to h+\tau\) | [train](train_denoiser.py) | prototype есть, не запущен | — | — | — |
+| 18 | Safe correction | Для correction \(c=D(x)-x\) использовать \(c_{safe}=c-\langle c,\hat v\rangle\hat v\); это control поверх любого repair, а не отдельный denoiser | [repair](steering.py) | код есть, не запущен | — | — | — |
+| 19 | Local geodesic | Малые шаги \(h_{k+1}=h_k+\delta P_{T_{h_k}}v\); после каждого шага пересчитать kNN и local SVD basis | [prototype](steering.py) | код есть, не запущен | — | — | — |
+| 20 | Curveball | Polynomial KPCA \(\phi(h)\), linear class-mean shift в kernel coordinates, kernel-weighted preimage и возврат residual; nonlinear, но inverse приближённый | — | не начато | — | — | — |
+| 21 | Conditional field / UniSteer | Учить \(u_\theta(z_t,t,c)\) по activation-condition pairs; article baseline использует frozen text encoder и cross-attention, наш single-token вариант проверяет pooled condition + FiLM без attention | — | не начато | — | — | — |
+| 22 | INNSteer | RealNVP affine coupling blocks \(\phi\) с ActNorm учат обратимые coordinates; в них делается linear mean-difference shift, затем точный \(\phi^{-1}\) даёт nonlinear input-dependent path | — | не начато | — | — | — |
+| 23 | GLP prior during training | Учить direct steering function по property loss, GLP energy и minimal-movement penalty; на inference GLP не вызывается | — | не начато | — | — | — |
+| 24 | GPT-2 MLP fine-tuning | Не основная линия: вопрос задания, можно ли переобучить штатный layer-6 MLP на denoising loss без adapter; запускать только после внешних denoisers | [model](denoiser.py), [train](train_denoiser.py) | отложено | — | — | — |
+| 25 | Финальное сравнение | Все прошедшие baseline методы на одном протоколе, включая latency, Pareto, trajectories и failure cases | [HTML](viz.py) | не начато | — | — | — |
 
 ## Диагностика
 
-- **Pareto и тексты:** property/quality с интервалами, все decoded generations и failure cases; [HTML](viz.py).
-- **Noise tolerance:** random-noise strength против quality, property и decoded output; код —.
-- **Tensor path:** clean activation, steered activation, repaired activation и correction residual; код —.
-- **Траектории:** alpha, denoising steps и checkpoints в одной PCA-системе, обученной на held-out real activations; [черновик](tmp/diag_denoise_path.py).
-- **Локальная геометрия:** kNN cloud, local PCA residual, tangent/normal decomposition и curvature; код —.
-- **Density и prior:** kNN distance, GLP reconstruction/energy и distance до real activation bank; [черновик](tmp/diag_steering.py).
-- **Propagation:** изменение activation по последующим слоям и изменение logits/softmax; [черновик](tmp/diag_steering.py).
-- **Gradients и Jacobian:** alignment loss-gradient с steering/correction и local singular values; код —.
-- **Rank и spectrum:** effective rank token-by-dimension и singular-value curves по слоям и checkpoints; код —.
-- **Training dynamics:** train/validation objective, gradient norm, learning rate и fixed-example trajectories по checkpoints; код —.
-- **Causal ablations:** zero alpha, shuffled/orthogonal direction, repair off, tangent/normal и preserved-direction correction; код —.
+![Единая геометрическая карта методов](assets/steering-geometry-concept.png)
+
+Картинка выше объясняет координаты, но не является результатом. Каждый `runs/<experiment>/diagnostics.html` повторяет её по реальным активациям и содержит:
+
+- clean \(h\), direction \(v\), steered \(x\), repaired \(\tilde h\) и correction \(\tilde h-x\);
+- все denoising/flow states в одной held-out PCA-проекции, рядом с full-dimensional distances;
+- kNN cloud, local tangent/normal basis, singular spectrum и effective rank;
+- Jacobian singular values метода: amplification, contraction и стирание direction;
+- \(\nabla_h L_{LM}\) и differentiable property gradient только для проверки их alignment с конкретным path;
+- downstream layer-by-token drift, logits, decoded generations и causal alpha/repair ablations;
+- train/validation objective, learning rate, gradient norm, checkpoints, latency и память.
