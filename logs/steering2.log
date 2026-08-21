@@ -1,0 +1,38 @@
+/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/transformer_lens/config/hooked_transformer_config.py:383: UserWarning: MPS backend may produce silently incorrect results (PyTorch 2.13.0). Set TRANSFORMERLENS_ALLOW_MPS=1 to suppress this warning. See: https://github.com/TransformerLensOrg/TransformerLens/issues/1178
+  warn_if_mps(self.device)
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 5556.36it/s]
+Loaded pretrained model gpt2 into HookedTransformer
+Loading weights:   0%|          | 0/104 [00:00<?, ?it/s]Loading weights: 100%|██████████| 104/104 [00:00<00:00, 5461.68it/s]
+    none alpha=   0.0  ppl=   15.27  d2=0.921  concept=0.618
+    none alpha=  10.0  ppl=   18.16  d2=0.912  concept=0.859
+    none alpha=  20.0  ppl=   19.44  d2=0.908  concept=0.896
+    none alpha=  40.0  ppl=   47.66  d2=0.867  concept=0.937
+    none alpha=  80.0  ppl=  162.22  d2=0.722  concept=0.983
+    none alpha= 160.0  ppl=  411.37  d2=0.603  concept=1.000
+     mse alpha=   0.0  ppl=   15.77  d2=0.921  concept=0.571
+     mse alpha=  10.0  ppl=   18.09  d2=0.911  concept=0.846
+     mse alpha=  20.0  ppl=   20.75  d2=0.914  concept=0.913
+     mse alpha=  40.0  ppl=   57.37  d2=0.874  concept=0.870
+     mse alpha=  80.0  ppl=  132.13  d2=0.723  concept=0.998
+     mse alpha= 160.0  ppl=  407.03  d2=0.613  concept=1.000
+glp_t0.2 alpha=   0.0  ppl=   16.52  d2=0.945  concept=0.457
+glp_t0.2 alpha=  10.0  ppl=   17.51  d2=0.925  concept=0.811
+glp_t0.2 alpha=  20.0  ppl=   21.22  d2=0.932  concept=0.947
+glp_t0.2 alpha=  40.0  ppl=   42.35  d2=0.886  concept=0.958
+glp_t0.2 alpha=  80.0  ppl=  158.63  d2=0.739  concept=0.931
+glp_t0.2 alpha= 160.0  ppl=  374.22  d2=0.667  concept=0.990
+glp_t0.35 alpha=   0.0  ppl=   17.22  d2=0.922  concept=0.564
+glp_t0.35 alpha=  10.0  ppl=   18.42  d2=0.931  concept=0.804
+glp_t0.35 alpha=  20.0  ppl=   21.01  d2=0.910  concept=0.784
+glp_t0.35 alpha=  40.0  ppl=   31.17  d2=0.896  concept=0.896
+glp_t0.35 alpha=  80.0  ppl=  116.47  d2=0.780  concept=0.998
+glp_t0.35 alpha= 160.0  ppl=  473.95  d2=0.682  concept=0.962
+glp_t0.5 alpha=   0.0  ppl=   19.03  d2=0.912  concept=0.487
+glp_t0.5 alpha=  10.0  ppl=   22.14  d2=0.919  concept=0.752
+glp_t0.5 alpha=  20.0  ppl=   23.41  d2=0.914  concept=0.833
+glp_t0.5 alpha=  40.0  ppl=   30.45  d2=0.905  concept=0.950
+glp_t0.5 alpha=  80.0  ppl=   90.39  d2=0.843  concept=0.996
+glp_t0.5 alpha= 160.0  ppl=  588.17  d2=0.679  concept=0.894
+-> runs/pareto_sentiment.json
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
