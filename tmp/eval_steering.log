@@ -1,0 +1,18 @@
+/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/eval_steering.py:118: DeprecationWarning: HookedTransformer.from_pretrained is deprecated and will be removed in a future major release. Use TransformerBridge.boot_transformers(...) instead, then call enable_compatibility_mode() for HookedTransformer-equivalent numerics. See docs/source/content/migrating_to_v3.md.
+  model = transformer_lens.HookedTransformer.from_pretrained(
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 5344.49it/s]
+Loaded pretrained model gpt2 into HookedTransformer
+       режим  alpha       ppl   dist2  concept
+без денойзера      0     15.36   0.921     0.02
+без денойзера     20     17.06   0.923     0.02
+без денойзера     40     22.14   0.936     0.04
+без денойзера     60     35.67   0.918     0.10
+без денойзера     80     70.21   0.871     0.04
+без денойзера    120    423.39   0.930     0.00
+с денойзером      0     15.45   0.919     0.04
+с денойзером     20     18.29   0.944     0.00
+с денойзером     40     24.69   0.932     0.04
+с денойзером     60     42.77   0.934     0.08
+с денойзером     80    112.19   0.910     0.02
+с денойзером    120   1402.86   0.951     0.08
+-> runs/steering_vs_denoised.json

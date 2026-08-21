@@ -1,0 +1,82 @@
+{
+  "config": {
+    "latent": 27677,
+    "concept_words": [
+      "paris",
+      "eiffel",
+      "france",
+      "french",
+      "seine",
+      "louvre"
+    ],
+    "alphas": [
+      0.0,
+      20.0,
+      40.0,
+      60.0,
+      80.0,
+      120.0
+    ],
+    "n_samples": 8,
+    "max_new_tokens": 24,
+    "seed": 0,
+    "device": "cpu",
+    "tag": "sweep_latent27677"
+  },
+  "rows": [
+    {
+      "alpha": 0.0,
+      "ppl": 15.362680435180664,
+      "dist1": 0.5105315947843531,
+      "dist2": 0.9209694415173867,
+      "dist3": 0.9944506104328524,
+      "concept": 0.020833333333333332,
+      "sample": "<|endoftext|>The weather today is cold, clear and almost all hail. Weather conditions could start to cool the whole globe. As the world braces for more"
+    },
+    {
+      "alpha": 20.0,
+      "ppl": 17.061023712158203,
+      "dist1": 0.50293542074364,
+      "dist2": 0.9229979466119097,
+      "dist3": 0.9913606911447084,
+      "concept": 0.020833333333333332,
+      "sample": "<|endoftext|>The weather today is a bit less sunny than that today. Weather conditions could start to cool the day once or twice during the fall. Expect"
+    },
+    {
+      "alpha": 40.0,
+      "ppl": 22.135597229003906,
+      "dist1": 0.5025227043390514,
+      "dist2": 0.936373276776246,
+      "dist3": 0.9966480446927374,
+      "concept": 0.041666666666666664,
+      "sample": "<|endoftext|>The weather today is a fantastic, sunny day that will change everything you're looking for \u2013 the world may look like it is in an eclipse"
+    },
+    {
+      "alpha": 60.0,
+      "ppl": 35.66870880126953,
+      "dist1": 0.5010660980810234,
+      "dist2": 0.9179775280898876,
+      "dist3": 0.997624703087886,
+      "concept": 0.10416666666666667,
+      "sample": "<|endoftext|>The weather today is a constant, but it was recently noted that the wind blows very cool, is probably the best indicator of climate change."
+    },
+    {
+      "alpha": 80.0,
+      "ppl": 70.20677185058594,
+      "dist1": 0.4432314410480349,
+      "dist2": 0.8709677419354839,
+      "dist3": 0.9890243902439024,
+      "concept": 0.041666666666666664,
+      "sample": "<|endoftext|>The weather today is a constant, but it was recently noted that the wind blows a storm, is probably the best indicator with us. I"
+    },
+    {
+      "alpha": 120.0,
+      "ppl": 423.3907470703125,
+      "dist1": 0.4905933429811867,
+      "dist2": 0.9300155520995335,
+      "dist3": 0.9966386554621849,
+      "concept": 0.0,
+      "sample": "<|endoftext|>The weather today is a \"pro-or-ifer'erian climate-ifters is.'ian climate of is, no bet"
+    }
+  ]
+}

@@ -1,0 +1,334 @@
+{
+  "config": {
+    "vector": "sae:27677",
+    "concept_words": null,
+    "repair": [
+      "none",
+      "mse",
+      "glp"
+    ],
+    "mse": "runs/mse/denoiser.pt",
+    "glp": "runs/glp/denoiser.pt",
+    "alphas": [
+      0,
+      10,
+      20,
+      40,
+      80,
+      160
+    ],
+    "t_start": [
+      0.2,
+      0.35,
+      0.5
+    ],
+    "steps": 20,
+    "n_samples": 8,
+    "max_new_tokens": 30,
+    "seed": 0,
+    "device": "mps",
+    "tag": "pareto_sae27677"
+  },
+  "rows": [
+    {
+      "repair": "none",
+      "alpha": 0,
+      "ppl": 15.271402359008789,
+      "dist1": 0.48870967741935484,
+      "dist2": 0.9211409395973155,
+      "dist3": 0.9921328671328671,
+      "concept": 0.0,
+      "sample": " more unusual than it has been for the past 10 years, as the temperatures have been warmer than average in the first half of the morning since 1900."
+    },
+    {
+      "repair": "none",
+      "alpha": 10,
+      "ppl": 15.473027229309082,
+      "dist1": 0.5070074196207749,
+      "dist2": 0.9356223175965666,
+      "dist3": 0.9946284691136974,
+      "concept": 0.1818585197130839,
+      "sample": " pretty amazing too.\nTornado of Tuna the Sun will be the biggest storm out of the month for the Northern Hemisphere Saturday, and possibly"
+    },
+    {
+      "repair": "none",
+      "alpha": 20,
+      "ppl": 15.765168190002441,
+      "dist1": 0.4929343308395677,
+      "dist2": 0.9082251082251083,
+      "dist3": 0.992773261065944,
+      "concept": 0.0,
+      "sample": " pretty amazing too.\nTornado of the Past, a hurricane with a severe weather pattern, is also making landfall, and we're on the"
+    },
+    {
+      "repair": "none",
+      "alpha": 40,
+      "ppl": 22.15475845336914,
+      "dist1": 0.48105436573311366,
+      "dist2": 0.9228130360205832,
+      "dist3": 0.9973166368515206,
+      "concept": 0.19652769962946573,
+      "sample": " pretty amazing too.\n\nAnd then of course, the sun will be the target for a tonne of ice.\n\nMy second point."
+    },
+    {
+      "repair": "none",
+      "alpha": 80,
+      "ppl": 84.0553207397461,
+      "dist1": 0.4368932038834951,
+      "dist2": 0.8912442396313364,
+      "dist3": 0.9893924783027965,
+      "concept": 0.19202452898025513,
+      "sample": " certainly certainly too cold to make you eat the candy, the sun will be less than 12\u00b0 above you (if necessary, or at a point)."
+    },
+    {
+      "repair": "none",
+      "alpha": 160,
+      "ppl": 917.8232421875,
+      "dist1": 0.6795698924731183,
+      "dist2": 0.9832134292565947,
+      "dist3": 1.0,
+      "concept": 0.0,
+      "sample": ", if Gas-portians will eat oferians the Gas will be the sinkerianianians (ifianians ()iansians)."
+    },
+    {
+      "repair": "mse",
+      "alpha": 0,
+      "ppl": 15.772010803222656,
+      "dist1": 0.49718423169750603,
+      "dist2": 0.9205020920502092,
+      "dist3": 0.9825632083696599,
+      "concept": 0.0,
+      "sample": " more unusual than it has been for the past 10 years, as the temperatures have been warmer than average in the first half of the morning since 1900."
+    },
+    {
+      "repair": "mse",
+      "alpha": 10,
+      "ppl": 15.946622848510742,
+      "dist1": 0.5008264462809917,
+      "dist2": 0.9285714285714286,
+      "dist3": 0.9883303411131059,
+      "concept": 0.38207173347473145,
+      "sample": " pretty amazing too.\nTornado of Tuna the Sun will be the biggest storm out of the month for the Northern Hemisphere Saturday, and possibly"
+    },
+    {
+      "repair": "mse",
+      "alpha": 20,
+      "ppl": 16.181306838989258,
+      "dist1": 0.48770491803278687,
+      "dist2": 0.9172354948805461,
+      "dist3": 0.9902135231316725,
+      "concept": 0.0,
+      "sample": " pretty amazing too.\nTornado of Tuna the Sun will be the biggest storm out of the month for the Northern Hemisphere Saturday May 2."
+    },
+    {
+      "repair": "mse",
+      "alpha": 40,
+      "ppl": 21.739774703979492,
+      "dist1": 0.48955722639933164,
+      "dist2": 0.9312445604873804,
+      "dist3": 0.997275204359673,
+      "concept": 0.8396702607472738,
+      "sample": " pretty amazing too.\n\n\n\n\nNo, the sun will be less than 25 degree above you (if you're over 25 degrees on the"
+    },
+    {
+      "repair": "mse",
+      "alpha": 80,
+      "ppl": 77.25563049316406,
+      "dist1": 0.41056218057921634,
+      "dist2": 0.8987566607460036,
+      "dist3": 0.9935064935064936,
+      "concept": 0.0,
+      "sample": " certainly definitely too cold to make you eat the candy, the sun will be less than 12\u00b0 above you (if necessary, or at 50\u00b0)."
+    },
+    {
+      "repair": "mse",
+      "alpha": 160,
+      "ppl": 914.8672485351562,
+      "dist1": 0.6846652267818575,
+      "dist2": 0.983132530120482,
+      "dist3": 1.0,
+      "concept": 0.0,
+      "sample": ", if Gas-portians will eat oferians the Gas will be the sinkerianianians (ifianians ()iansians)."
+    },
+    {
+      "repair": "glp_t0.2",
+      "alpha": 0,
+      "ppl": 16.517410278320312,
+      "dist1": 0.5098522167487685,
+      "dist2": 0.9452991452991453,
+      "dist3": 0.9991087344028521,
+      "concept": 0.0,
+      "sample": " too cold for even a quick shower. The storm was so severe on Friday that it could reach the Bahamas on Saturday. But we didn't have the"
+    },
+    {
+      "repair": "glp_t0.2",
+      "alpha": 10,
+      "ppl": 16.24832534790039,
+      "dist1": 0.49634443541835904,
+      "dist2": 0.937447168216399,
+      "dist3": 0.9982378854625551,
+      "concept": 0.0,
+      "sample": " too cold for even a quick shower. The storm is so severe on Friday, it could get to your houses for much longer. And if you're"
+    },
+    {
+      "repair": "glp_t0.2",
+      "alpha": 20,
+      "ppl": 15.701800346374512,
+      "dist1": 0.5008210180623974,
+      "dist2": 0.9401709401709402,
+      "dist3": 0.9955436720142602,
+      "concept": 0.21525092919667563,
+      "sample": " absolutely perfect. The sun is the only bright spot. From the clouds to the storm, with gusts of 65 MPH, we're driving from the"
+    },
+    {
+      "repair": "glp_t0.2",
+      "alpha": 40,
+      "ppl": 20.654281616210938,
+      "dist1": 0.4813895781637717,
+      "dist2": 0.9121447028423773,
+      "dist3": 0.9928122192273136,
+      "concept": 0.6111385226249695,
+      "sample": " absolutely unforgiving. What you would normally see is the ocean turning on your car. My friend and I spent the morning warming up on the beach in"
+    },
+    {
+      "repair": "glp_t0.2",
+      "alpha": 80,
+      "ppl": 64.1023178100586,
+      "dist1": 0.4369602763385147,
+      "dist2": 0.8927927927927928,
+      "dist3": 0.9971751412429378,
+      "concept": 0.8474064866701762,
+      "sample": " making a dent in the trend. Nearly 80 percent of fossil food production will be transformed, with all food food food will likely to meet the target in"
+    },
+    {
+      "repair": "glp_t0.2",
+      "alpha": 160,
+      "ppl": 1033.46484375,
+      "dist1": 0.7222222222222222,
+      "dist2": 0.9869791666666666,
+      "dist3": 1.0,
+      "concept": 0.0,
+      "sample": "ianian,ians-er theiansian theiansians'ian 'er.ians\u2014iferians) will, with D-er in"
+    },
+    {
+      "repair": "glp_t0.35",
+      "alpha": 0,
+      "ppl": 17.21675682067871,
+      "dist1": 0.4901639344262295,
+      "dist2": 0.9223549488054608,
+      "dist3": 0.9911032028469751,
+      "concept": 0.0,
+      "sample": " too cold for even a man to live in the city. According to the National Weather Service, temperatures are expected to drop to 25 degrees in the first"
+    },
+    {
+      "repair": "glp_t0.35",
+      "alpha": 10,
+      "ppl": 18.095136642456055,
+      "dist1": 0.50163132137031,
+      "dist2": 0.9414261460101867,
+      "dist3": 0.9938053097345133,
+      "concept": 0.18117560942967734,
+      "sample": " too cold for even a man to live in the Bayou town of Port Elizabeth. The town has seen numerous hurricanes, tornadoes, storms and the"
+    },
+    {
+      "repair": "glp_t0.35",
+      "alpha": 20,
+      "ppl": 18.77916145324707,
+      "dist1": 0.5090609555189456,
+      "dist2": 0.9433962264150944,
+      "dist3": 0.9955277280858676,
+      "concept": 0.018998960653940838,
+      "sample": " nice, so we're here to save these two beautiful birds just a little short of death with all your help!\n\nThis is the day in"
+    },
+    {
+      "repair": "glp_t0.35",
+      "alpha": 40,
+      "ppl": 22.56293296813965,
+      "dist1": 0.5182119205298014,
+      "dist2": 0.9370689655172414,
+      "dist3": 0.9973021582733813,
+      "concept": 0.0,
+      "sample": " starting to turn into a bit of a wild storm. From the Arctic to the polar, with gustage of 65 mph, we're currently under the"
+    },
+    {
+      "repair": "glp_t0.35",
+      "alpha": 80,
+      "ppl": 72.36933135986328,
+      "dist1": 0.5051258154706431,
+      "dist2": 0.92,
+      "dist3": 0.9948822927328557,
+      "concept": 1.7724197904268901,
+      "sample": " making a dent in the trend. The Paris storm is expected to keep warm, with a strong gustage of 612 per-cm-hour in"
+    },
+    {
+      "repair": "glp_t0.35",
+      "alpha": 160,
+      "ppl": 1333.609375,
+      "dist1": 0.711453744493392,
+      "dist2": 0.9852216748768473,
+      "dist3": 1.0,
+      "concept": 1.2224865158398945,
+      "sample": "ianian,ians-er theiansian theiansians isian 'er., with andageable-me,-er iser in"
+    },
+    {
+      "repair": "glp_t0.5",
+      "alpha": 0,
+      "ppl": 19.03347396850586,
+      "dist1": 0.48168789808917195,
+      "dist2": 0.9122516556291391,
+      "dist3": 0.9948275862068966,
+      "concept": 0.0,
+      "sample": " starting to turn into a bit cold. The storm is expected to keep getting worse. The clouds are already moving over much of southern parts of the south"
+    },
+    {
+      "repair": "glp_t0.5",
+      "alpha": 10,
+      "ppl": 20.234031677246094,
+      "dist1": 0.49274193548387096,
+      "dist2": 0.9093959731543624,
+      "dist3": 0.9921328671328671,
+      "concept": 0.0,
+      "sample": " starting to turn into a bit cold. The storm is expected to keep getting worse. The clouds are already moving over much of southern parts of the south"
+    },
+    {
+      "repair": "glp_t0.5",
+      "alpha": 20,
+      "ppl": 20.510324478149414,
+      "dist1": 0.5072697899838449,
+      "dist2": 0.9201680672268907,
+      "dist3": 0.9912434325744308,
+      "concept": 0.0,
+      "sample": " starting to turn into a bit cold. The storm is expected to keep getting worse. The clouds are already moving over much of southern parts of the south"
+    },
+    {
+      "repair": "glp_t0.5",
+      "alpha": 40,
+      "ppl": 23.29623031616211,
+      "dist1": 0.4827586206896552,
+      "dist2": 0.9165971643035863,
+      "dist3": 0.9930495221546481,
+      "concept": 0.0,
+      "sample": " starting to turn into a bit cold. The storm is expected to keep getting worse. The clouds are already moving over much of southern parts of the south"
+    },
+    {
+      "repair": "glp_t0.5",
+      "alpha": 80,
+      "ppl": 98.97763061523438,
+      "dist1": 0.5291828793774319,
+      "dist2": 0.9428571428571428,
+      "dist3": 0.9978540772532188,
+      "concept": 1.4292568961779277,
+      "sample": " making a comeback. What you would have expected the \"bouportianism' of with and follow the fall season. In addition to the heat"
+    },
+    {
+      "repair": "glp_t0.5",
+      "alpha": 160,
+      "ppl": 2119.36962890625,
+      "dist1": 0.5146036161335188,
+      "dist2": 0.9314456035767511,
+      "dist3": 0.9983948635634029,
+      "concept": 9.26095817486445,
+      "sample": " Parisian Gas Paris-er theites, theiansians beian 'er 2015, climate andageable-me,- D-er in"
+    }
+  ]
+}

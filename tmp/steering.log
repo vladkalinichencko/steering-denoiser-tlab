@@ -1,0 +1,170 @@
+активаций: обучение 490000, валидация 10000
+шаг      0  train 2.3254  val 2.3264
+шаг    250  train 1.3458  val 1.3580
+шаг    500  train 1.1760  val 1.2105
+шаг    750  train 1.1326  val 1.1488
+шаг   1000  train 1.1057  val 1.1179
+шаг   1250  train 1.0537  val 1.0848
+шаг   1500  train 1.0316  val 1.0658
+шаг   1750  train 1.0275  val 1.0503
+шаг   2000  train 1.0062  val 1.0371
+шаг   2250  train 0.9941  val 1.0271
+шаг   2500  train 1.0010  val 1.0173
+шаг   2750  train 0.9781  val 1.0098
+шаг   3000  train 0.9813  val 1.0028
+шаг   3250  train 0.9655  val 0.9970
+шаг   3500  train 0.9353  val 0.9896
+шаг   3750  train 0.9729  val 0.9838
+шаг   4000  train 0.9697  val 0.9797
+шаг   4250  train 0.9448  val 0.9754
+шаг   4500  train 0.9336  val 0.9696
+шаг   4750  train 0.9604  val 0.9646
+шаг   5000  train 0.9405  val 0.9615
+шаг   5250  train 0.9220  val 0.9581
+шаг   5500  train 0.9349  val 0.9536
+шаг   5750  train 0.9116  val 0.9508
+шаг   6000  train 0.9191  val 0.9472
+шаг   6250  train 0.9151  val 0.9444
+шаг   6500  train 0.9181  val 0.9399
+шаг   6750  train 0.9155  val 0.9375
+шаг   7000  train 0.8853  val 0.9343
+шаг   7250  train 0.9122  val 0.9319
+шаг   7500  train 0.9058  val 0.9292
+шаг   7750  train 0.8969  val 0.9262
+шаг   8000  train 0.8935  val 0.9241
+шаг   8250  train 0.8878  val 0.9220
+шаг   8500  train 0.8935  val 0.9197
+шаг   8750  train 0.9039  val 0.9175
+шаг   9000  train 0.8801  val 0.9153
+шаг   9250  train 0.8830  val 0.9135
+шаг   9500  train 0.8770  val 0.9116
+шаг   9750  train 0.8883  val 0.9094
+шаг  10000  train 0.8850  val 0.9075
+шаг  10250  train 0.8651  val 0.9058
+шаг  10500  train 0.8811  val 0.9044
+шаг  10750  train 0.8887  val 0.9029
+шаг  11000  train 0.8734  val 0.9014
+шаг  11250  train 0.8754  val 0.8999
+шаг  11500  train 0.8814  val 0.8988
+шаг  11750  train 0.8712  val 0.8976
+шаг  12000  train 0.8782  val 0.8965
+шаг  12250  train 0.8719  val 0.8958
+шаг  12500  train 0.8654  val 0.8951
+шаг  12750  train 0.8689  val 0.8942
+шаг  13000  train 0.8642  val 0.8935
+шаг  13250  train 0.8522  val 0.8931
+шаг  13500  train 0.8542  val 0.8927
+шаг  13750  train 0.8489  val 0.8923
+шаг  14000  train 0.8761  val 0.8920
+шаг  14250  train 0.8782  val 0.8918
+шаг  14500  train 0.8564  val 0.8917
+шаг  14750  train 0.8790  val 0.8917
+шаг  14999  train 0.8646  val 0.8917
+лучший val 0.8917 -> runs/glp
+активаций: обучение 490000, валидация 10000
+шаг      0  train 0.9869  val 0.9779
+шаг    250  train 0.4616  val 0.4809
+шаг    500  train 0.4086  val 0.4330
+шаг    750  train 0.3870  val 0.4111
+шаг   1000  train 0.4074  val 0.3969
+шаг   1250  train 0.3969  val 0.3870
+шаг   1500  train 0.3684  val 0.3798
+шаг   1750  train 0.3704  val 0.3738
+шаг   2000  train 0.3210  val 0.3692
+шаг   2250  train 0.3569  val 0.3644
+шаг   2500  train 0.3599  val 0.3611
+шаг   2750  train 0.3368  val 0.3583
+шаг   3000  train 0.3623  val 0.3552
+шаг   3250  train 0.3508  val 0.3533
+шаг   3500  train 0.3530  val 0.3512
+шаг   3750  train 0.3404  val 0.3489
+шаг   4000  train 0.3370  val 0.3467
+шаг   4250  train 0.3357  val 0.3450
+шаг   4500  train 0.3176  val 0.3435
+шаг   4750  train 0.3112  val 0.3417
+шаг   5000  train 0.3555  val 0.3404
+шаг   5250  train 0.3198  val 0.3387
+шаг   5500  train 0.3339  val 0.3374
+шаг   5750  train 0.3306  val 0.3363
+шаг   6000  train 0.3349  val 0.3346
+шаг   6250  train 0.3334  val 0.3333
+шаг   6500  train 0.3169  val 0.3323
+шаг   6750  train 0.3168  val 0.3306
+шаг   7000  train 0.3239  val 0.3298
+шаг   7250  train 0.3290  val 0.3291
+шаг   7500  train 0.3135  val 0.3278
+шаг   7750  train 0.3319  val 0.3265
+шаг   8000  train 0.3083  val 0.3255
+шаг   8250  train 0.3154  val 0.3245
+шаг   8500  train 0.3105  val 0.3236
+шаг   8750  train 0.3097  val 0.3225
+шаг   9000  train 0.3026  val 0.3220
+шаг   9250  train 0.3202  val 0.3211
+шаг   9500  train 0.3326  val 0.3203
+шаг   9750  train 0.3267  val 0.3193
+шаг  10000  train 0.3236  val 0.3186
+шаг  10250  train 0.3326  val 0.3178
+шаг  10500  train 0.3085  val 0.3174
+шаг  10750  train 0.3012  val 0.3166
+шаг  11000  train 0.3118  val 0.3161
+шаг  11250  train 0.3094  val 0.3155
+шаг  11500  train 0.3064  val 0.3151
+шаг  11750  train 0.3147  val 0.3147
+шаг  12000  train 0.2847  val 0.3143
+шаг  12250  train 0.3049  val 0.3138
+шаг  12500  train 0.3191  val 0.3136
+шаг  12750  train 0.3145  val 0.3133
+шаг  13000  train 0.3206  val 0.3130
+шаг  13250  train 0.2927  val 0.3128
+шаг  13500  train 0.3005  val 0.3127
+шаг  13750  train 0.3129  val 0.3125
+шаг  14000  train 0.3152  val 0.3124
+шаг  14250  train 0.2929  val 0.3124
+шаг  14500  train 0.3066  val 0.3123
+шаг  14750  train 0.3008  val 0.3123
+шаг  14999  train 0.2975  val 0.3123
+лучший val 0.3123 -> runs/mse
+/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/transformer_lens/config/hooked_transformer_config.py:383: UserWarning: MPS backend may produce silently incorrect results (PyTorch 2.13.0). Set TRANSFORMERLENS_ALLOW_MPS=1 to suppress this warning. See: https://github.com/TransformerLensOrg/TransformerLens/issues/1178
+  warn_if_mps(self.device)
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 6707.77it/s]
+Loaded pretrained model gpt2 into HookedTransformer
+Loading weights:   0%|          | 0/104 [00:00<?, ?it/s]Loading weights: 100%|██████████| 104/104 [00:00<00:00, 4657.00it/s]
+ none alpha=   0.0  ppl=   15.27  d2=0.921  concept=0.618
+ none alpha=  10.0  ppl=   18.16  d2=0.912  concept=0.859
+ none alpha=  20.0  ppl=   19.44  d2=0.908  concept=0.896
+ none alpha=  40.0  ppl=   47.66  d2=0.867  concept=0.937
+ none alpha=  80.0  ppl=  162.22  d2=0.722  concept=0.983
+ none alpha= 160.0  ppl=  411.37  d2=0.603  concept=1.000
+  mse alpha=   0.0  ppl=   15.77  d2=0.921  concept=0.571
+  mse alpha=  10.0  ppl=   18.09  d2=0.911  concept=0.846
+  mse alpha=  20.0  ppl=   20.75  d2=0.914  concept=0.913
+  mse alpha=  40.0  ppl=   57.37  d2=0.874  concept=0.870
+  mse alpha=  80.0  ppl=  132.13  d2=0.723  concept=0.998
+  mse alpha= 160.0  ppl=  407.03  d2=0.613  concept=1.000
+glp@0.2 alpha=   0.0  ppl=   16.52  d2=0.945  concept=0.457
+Traceback (most recent call last):
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/eval_steering.py", line 104, in <module>
+    main()
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/eval_steering.py", line 92, in main
+    mlflow.log_metrics({f"{kind}_{k}": x for k, x in row.items()
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/mlflow/tracking/fluent.py", line 1384, in log_metrics
+    return MlflowClient().log_batch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/mlflow/tracking/client.py", line 2747, in log_batch
+    return self._tracking_client.log_batch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/mlflow/telemetry/track.py", line 30, in wrapper
+    result = func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/mlflow/tracking/_tracking_service/client.py", line 583, in log_batch
+    self.store.log_batch(run_id=run_id, metrics=metrics_batch, params=[], tags=[])
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/mlflow/store/tracking/sqlalchemy_store.py", line 2197, in log_batch
+    metrics, params, tags = _validate_batch_log_data(metrics, params, tags)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/mlflow/utils/validation.py", line 601, in _validate_batch_log_data
+    _validate_metric(metric.key, metric.value, metric.timestamp, metric.step, path=path)
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/mlflow/utils/validation.py", line 377, in _validate_metric
+    _validate_metric_name(key, append_to_json_path(path, "name"))
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/mlflow/utils/validation.py", line 352, in _validate_metric_name
+    raise MlflowException(
+mlflow.exceptions.MlflowException: Invalid value "glp@0.2_ppl" for parameter 'metrics[0].name' supplied: Names may only contain alphanumerics, underscores (_), dashes (-), periods (.), spaces ( ), colon(:) and slashes (/).

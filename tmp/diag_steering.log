@@ -1,0 +1,37 @@
+/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/tmp/diag_steering.py:103: DeprecationWarning: HookedTransformer.from_pretrained is deprecated and will be removed in a future major release. Use TransformerBridge.boot_transformers(...) instead, then call enable_compatibility_mode() for HookedTransformer-equivalent numerics. See docs/source/content/migrating_to_v3.md.
+  model = transformer_lens.HookedTransformer.from_pretrained(
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 10461.55it/s]
+Loaded pretrained model gpt2 into HookedTransformer
+денойзер: загружен
+настоящих активаций: 100000, после отсева выбросов: 99195 (медиана нормы 88.1)
+
+1. Уход с многообразия (латент 27677):
+ alpha          что     норма   z-оценка   до ближайшей
+     0       чистое      96.1      0.809           55.1
+     0    застирено      96.1      0.809           55.1
+     0   расшумлено      96.1      0.809           55.1
+    20    застирено      96.4      0.848           60.2
+    20   расшумлено      96.4      0.848           60.2
+    40    застирено     100.8      0.951           70.3
+    40   расшумлено     100.8      0.951           70.3
+    60    застирено     108.8      1.101           83.8
+    60   расшумлено     108.8      1.101           83.8
+    80    застирено     119.6      1.281           99.3
+    80   расшумлено     119.7      1.281           99.3
+   120    застирено     147.2      1.693          133.2
+   120   расшумлено     147.2      1.693          133.3
+
+2. Распространение возмущения по слоям (относительно нормы слоя):
+ alpha   слой 6   слой 7   слой 8   слой 9  слой 10  слой 11
+    20    0.167    0.147    0.131    0.115    0.088    0.082
+    40    0.334    0.297    0.267    0.235    0.180    0.173
+    60    0.501    0.449    0.405    0.357    0.272    0.266
+    80    0.668    0.601    0.541    0.475    0.360    0.352
+   120    1.003    0.899    0.800    0.693    0.521    0.500
+
+3. Logit lens, последняя позиция промпта 'The weather today is':
+  alpha=    0: слой6: not/now/still             слой8: cloudy/warmer/sunny       слой11: a/pretty/so               
+  alpha=   60: слой6: weather/ter/certainly     слой8: certainly/warming/undoubtedlyслой11: a/going/changing          
+  alpha=  120: слой6: ter/ters/Gas              слой8: ter/port/warming          слой11: a/the/,                   
+
+-> tmp/steer_pca.png, tmp/diag_steering.json

@@ -1,0 +1,20 @@
+{
+  "tag": "mlp_smoke",
+  "objective": "gpt2mlp",
+  "n_vectors": 500000,
+  "steps": 30,
+  "batch_size": 1024,
+  "n_blocks": 4,
+  "width": 2,
+  "expand": 2,
+  "noise": "interp",
+  "tangent_dim": 64,
+  "init_gpt2": true,
+  "sigma": 1.0,
+  "lr": 0.0003,
+  "val_frac": 0.02,
+  "seed": 0,
+  "device": "mps",
+  "log_every": 10,
+  "best_val_loss": 2.810314655303955
+}

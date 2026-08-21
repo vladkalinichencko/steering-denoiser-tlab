@@ -1,0 +1,25 @@
+собираю 100000 активаций (это разово)
+/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/train_denoiser.py:57: DeprecationWarning: HookedTransformer.from_pretrained is deprecated and will be removed in a future major release. Use TransformerBridge.boot_transformers(...) instead, then call enable_compatibility_mode() for HookedTransformer-equivalent numerics. See docs/source/content/migrating_to_v3.md.
+  model = transformer_lens.HookedTransformer.from_pretrained(
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 4859.27it/s]
+Loaded pretrained model gpt2 into HookedTransformer
+сохранено: datasets/acts_layer6_100000.pt  (100000, 768)
+активаций: обучение 95000, валидация 5000; sigma=10.487
+2026/08/18 12:21:25 INFO mlflow.tracking.fluent: Experiment with name 'denoiser' does not exist. Creating a new experiment.
+шаг     0  train 81.4309  val 79.2543  на чистых 0.0051
+шаг   200  train 42.4931  val 45.2201  на чистых 22.6782
+шаг   400  train 35.8177  val 37.4338  на чистых 25.0329
+шаг   600  train 47.6451  val 31.5172  на чистых 20.6529
+шаг   800  train 45.0917  val 23.0455  на чистых 24.3012
+шаг  1000  train 19.9085  val 28.1913  на чистых 26.3440
+шаг  1200  train 30.0171  val 21.0181  на чистых 21.8062
+шаг  1400  train 10.5738  val 22.5461  на чистых 19.9554
+шаг  1600  train 22.6630  val 14.3330  на чистых 24.9979
+шаг  1800  train 8.1316  val 16.4525  на чистых 18.6509
+шаг  2000  train 12.3642  val 17.2273  на чистых 18.0175
+шаг  2200  train 15.4752  val 16.8744  на чистых 13.0468
+шаг  2400  train 26.7614  val 12.1451  на чистых 23.4981
+шаг  2600  train 8.0881  val 18.5935  на чистых 13.8273
+шаг  2800  train 34.0529  val 17.5520  на чистых 17.2387
+шаг  2999  train 12.6485  val 13.7565  на чистых 20.8056
+лучший val MSE 12.1451 -> runs/mlp_interp
