@@ -467,6 +467,56 @@ def run(selected=None, ratios=RATIOS):
         gc.collect()
 
 
+@torch.no_grad()
+def enrich():
+    """Add full states and method-specific diagnostics without regenerating text."""
+    target = device()
+    state = load_state(target)
+    _, normalizer, _, vector, bank, heldout_raw, _, _, _, _, _ = state
+    capacity, _ = load_checkpoint(
+        pathlib.Path("runs/mac_full_additive_capacity/best.pt"), target)
+    extra = geometry_modes(normalizer, bank, vector)
+    extra["Safe capacity MSE"] = safe_mode(capacity, vector)
+    paths = {"Curveball": pathlib.Path("runs/mac_reduced_curveball/model.pkl"),
+             "INNSteer": pathlib.Path("runs/mac_reduced_inn/best.pt"),
+             "Conditional field / UniSteer": pathlib.Path("runs/mac_reduced_unisteer/best.pt")}
+    if paths["Curveball"].exists():
+        extra["Curveball"] = curveball_mode(paths["Curveball"])
+    if paths["INNSteer"].exists():
+        extra["INNSteer"] = inn_mode(paths["INNSteer"], target)
+    if paths["Conditional field / UniSteer"].exists():
+        extra["Conditional field / UniSteer"] = unisteer_mode(
+            paths["Conditional field / UniSteer"], target)
+    artifact = json.loads((RUN / "screening.json").read_text())
+    scale = state[-1]
+    names = [point["method"] for point in artifact["points"]]
+    for name in dict.fromkeys(names):
+        mode = checkpoint_mode(name, target, vector) if name in CHECKPOINTS else extra[name]
+        for point in (row for row in artifact["points"] if row["method"] == name):
+            strength = point["ratio"] * scale
+            _, path = mode["apply"](
+                heldout_raw, strength, torch.Generator(device=target).manual_seed(0))
+            slug = "".join(value.lower() if value.isalnum() else "_"
+                           for value in name).strip("_")
+            state_path = pathlib.Path("states") / f"{slug}_{point['ratio']:.1f}.pt"
+            (RUN / "states").mkdir(parents=True, exist_ok=True)
+            torch.save(torch.stack([value.detach().half().cpu() for value in path]),
+                       RUN / state_path)
+            point.update({"states": state_path.as_posix(),
+                          "checkpoint": mode["checkpoint"],
+                          "parameters": mode["parameters"],
+                          "method_coordinates": ([mode["coordinates"](value[:1])[0]
+                                                  for value in path]
+                                                 if "coordinates" in mode else None),
+                          "jacobian_spectrum": (mode["jacobian"](
+                              heldout_raw[:1], strength) if "jacobian" in mode else None)})
+        save(artifact)
+        del mode
+        gc.collect()
+    artifact["training"] = training_histories()
+    save(artifact)
+
+
 REPORT = r'''<!doctype html><meta charset="utf-8"><title>Mac steering screening</title>
 <style>
 :root{--fg:#17202a;--mut:#687078;--line:#d7dce1;--blue:#2563eb;--orange:#d97706}
