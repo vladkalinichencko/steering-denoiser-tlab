@@ -349,6 +349,25 @@ def bootstrap(values, seed=0):
 
 
 @torch.no_grad()
+def downstream(model, apply, strength, target):
+    tokens = model.to_tokens(PROMPTS[0])
+    names = [f"blocks.{layer}.hook_resid_post" for layer in range(7, 12)]
+    clean_logits, clean = model.run_with_cache(tokens, names_filter=lambda name: name in names)
+    intervention = hook(apply, strength, target, 0)
+    with model.hooks(fwd_hooks=[(steering.HOOK, intervention)]):
+        edited_logits, edited = model.run_with_cache(
+            tokens, names_filter=lambda name: name in names)
+    first = clean_logits[0, -1].log_softmax(-1)
+    second = edited_logits[0, -1].log_softmax(-1)
+    return {"layers": list(range(7, 12)),
+            "drift": [float((edited[name][0, -1] - clean[name][0, -1]).norm())
+                      for name in names],
+            "logit_kl": float((first.exp() * (first - second)).sum()),
+            "clean_top": model.to_string(first.topk(10).indices),
+            "edited_top": model.to_string(second.topk(10).indices)}
+
+
+@torch.no_grad()
 def evaluate(name, mode, ratio, state, capacity):
     data, normalizer, source, vector, bank, heldout_raw, heldout, centre, basis, \
         clean_geometry, scale = state
@@ -472,7 +491,7 @@ def enrich():
     """Add full states and method-specific diagnostics without regenerating text."""
     target = device()
     state = load_state(target)
-    _, normalizer, _, vector, bank, heldout_raw, _, _, _, _, _ = state
+    _, normalizer, source, vector, bank, heldout_raw, _, _, _, _, _ = state
     capacity, _ = load_checkpoint(
         pathlib.Path("runs/mac_full_additive_capacity/best.pt"), target)
     extra = geometry_modes(normalizer, bank, vector)
@@ -509,7 +528,8 @@ def enrich():
                                                   for value in path]
                                                  if "coordinates" in mode else None),
                           "jacobian_spectrum": (mode["jacobian"](
-                              heldout_raw[:1], strength) if "jacobian" in mode else None)})
+                              heldout_raw[:1], strength) if "jacobian" in mode else None),
+                          "downstream": downstream(source, mode["apply"], strength, target)})
         save(artifact)
         del mode
         gc.collect()
@@ -535,6 +555,7 @@ svg{width:100%;height:auto;background:#fafbfc}.small{width:320px}.large{min-heig
 <section><h2>Fixed clean-validation coordinates</h2><svg class="large" id="trajectory" viewBox="0 0 620 430"></svg><p class="caption">Grey is the same held-out reference cloud for every method. Orange is clean to naive. Blue is the selected method path.</p></section>
 <section><h2>Full-dimensional geometry</h2><div class="plots" id="geometry"></div></section>
 <section id="intrinsic-section"><h2>Method coordinates</h2><svg class="large" id="intrinsic" viewBox="0 0 620 430"></svg><p class="caption">The selected method's own first two coordinates; common conclusions still use decoded and full-dimensional axes.</p></section>
+<section><h2>Downstream causal drift</h2><div class="plots" id="downstream"></div><p class="caption" id="logits"></p></section>
 <section class="wide"><h2>Training dynamics</h2><div class="plots" id="training"></div></section>
 <section class="wide"><h2>Decoded continuations</h2><div id="samples"></div></section></main>
 <script>
@@ -547,7 +568,7 @@ function chart(svg,series,xkey,ykey){svg.replaceChildren();const all=series.flat
 function metric(name,key,rows,xkey="ratio"){const box=document.createElement("div"),title=document.createElement("div"),svg=node("svg",{viewBox:"0 0 320 190",class:"small"});title.textContent=name;box.append(title,svg);chart(svg,[{rows,color:"#2563eb"}],xkey,key);return box}
 function project(svg,background,path,naive){svg.replaceChildren();const all=background.concat(path,naive),xb=bounds(all.map(x=>x[0])),yb=bounds(all.map(x=>x[1])),X=x=>42+(x-xb[0])/(xb[1]-xb[0])*560,Y=y=>394-(y-yb[0])/(yb[1]-yb[0])*370;svg.append(node("line",{x1:42,y1:14,x2:42,y2:394,class:"axis"}),node("line",{x1:42,y1:394,x2:608,y2:394,class:"axis"}),node("text",{x:608,y:416,fill:"#687078","font-size":11,"text-anchor":"end"},"PC1"),node("text",{x:8,y:16,fill:"#687078","font-size":11},"PC2"));for(const p of background)svg.append(node("circle",{cx:X(p[0]),cy:Y(p[1]),r:1.5,class:"cloud"}));for(const [values,cls] of [[naive,"path naive"],[path,"path"]]){svg.append(node("polyline",{points:values.map(p=>X(p[0])+","+Y(p[1])).join(" "),class:cls}));values.forEach((p,i)=>svg.append(node("circle",{cx:X(p[0]),cy:Y(p[1]),r:3,fill:cls.includes("naive")?"#d97706":"#2563eb"})))}}
 const method=document.querySelector("#method"),slider=document.querySelector("#ratio");methods.forEach(x=>method.append(new Option(x,x)));
-function render(){const rows=points.filter(x=>x.method===method.value).sort((a,b)=>a.ratio-b.ratio);slider.max=Math.max(0,rows.length-1);const row=rows[+slider.value]||rows[0];if(!row)return;const naive=points.find(x=>x.method==="Naive"&&x.ratio===row.ratio),ci=row.uncertainty;document.querySelector("#state-link").href=row.states;document.querySelector("#readout").textContent=`r ${row.ratio.toFixed(1)}  NLL ${row.nll.toFixed(3)} [${ci.nll.map(x=>x.toFixed(3)).join(", ")}]  property ${row.property.toFixed(3)} [${ci.property.map(x=>x.toFixed(3)).join(", ")}]  kNN ${row.geometry.knn_distance.toFixed(2)}  residual ${row.geometry.local_pca_residual.toFixed(2)}`;project(document.querySelector("#trajectory"),data.background,row.trajectory,naive?naive.trajectory:row.trajectory);const own=document.querySelector("#intrinsic-section");own.style.display=row.method_coordinates?"block":"none";if(row.method_coordinates)project(document.querySelector("#intrinsic"),[],row.method_coordinates,row.method_coordinates.slice(0,1));const q=document.querySelector("#quality");q.replaceChildren();[["NLL","nll"],["positive probability","property"],["dist-1","dist1"],["dist-2","dist2"],["dist-3","dist3"]].forEach(([n,k])=>q.append(metric(n,k,rows)));const g=document.querySelector("#geometry");g.replaceChildren();const flat=rows.map(x=>Object.assign({ratio:x.ratio},x.geometry));[["kNN distance","knn_distance"],["local PCA residual","local_pca_residual"],["capacity-MSE energy","denoiser_energy"],["tangent displacement","tangent_displacement"],["normal displacement","normal_displacement"],["latency ms","latency_ms"]].forEach(([n,k])=>g.append(metric(n,k,k==="latency_ms"?rows:flat)));g.append(metric("singular spectrum","value",row.geometry.spectrum.map((value,ratio)=>({ratio,value}))));if(row.jacobian_spectrum)g.append(metric("edit Jacobian spectrum","value",row.jacobian_spectrum.map((value,ratio)=>({ratio,value}))));const samples=document.querySelector("#samples");samples.replaceChildren();row.texts.slice(0,20).forEach((text,i)=>{const d=document.createElement("div");d.className="sample";d.innerHTML=`<div class="prompt"></div><div></div>`;d.children[0].textContent=data.contract.prompts[i%data.contract.prompts.length];d.children[1].textContent=text;samples.append(d)})}
+function render(){const rows=points.filter(x=>x.method===method.value).sort((a,b)=>a.ratio-b.ratio);slider.max=Math.max(0,rows.length-1);const row=rows[+slider.value]||rows[0];if(!row)return;const naive=points.find(x=>x.method==="Naive"&&x.ratio===row.ratio),ci=row.uncertainty;document.querySelector("#state-link").href=row.states||"#";document.querySelector("#readout").textContent=`r ${row.ratio.toFixed(1)}  NLL ${row.nll.toFixed(3)} [${ci.nll.map(x=>x.toFixed(3)).join(", ")}]  property ${row.property.toFixed(3)} [${ci.property.map(x=>x.toFixed(3)).join(", ")}]  kNN ${row.geometry.knn_distance.toFixed(2)}  residual ${row.geometry.local_pca_residual.toFixed(2)}`;project(document.querySelector("#trajectory"),data.background,row.trajectory,naive?naive.trajectory:row.trajectory);const own=document.querySelector("#intrinsic-section");own.style.display=row.method_coordinates?"block":"none";if(row.method_coordinates)project(document.querySelector("#intrinsic"),[],row.method_coordinates,row.method_coordinates.slice(0,1));const q=document.querySelector("#quality");q.replaceChildren();[["NLL","nll"],["positive probability","property"],["dist-1","dist1"],["dist-2","dist2"],["dist-3","dist3"]].forEach(([n,k])=>q.append(metric(n,k,rows)));const g=document.querySelector("#geometry");g.replaceChildren();const flat=rows.map(x=>Object.assign({ratio:x.ratio},x.geometry));[["kNN distance","knn_distance"],["local PCA residual","local_pca_residual"],["capacity-MSE energy","denoiser_energy"],["tangent displacement","tangent_displacement"],["normal displacement","normal_displacement"],["latency ms","latency_ms"]].forEach(([n,k])=>g.append(metric(n,k,k==="latency_ms"?rows:flat)));g.append(metric("singular spectrum","value",row.geometry.spectrum.map((value,ratio)=>({ratio,value}))));if(row.jacobian_spectrum)g.append(metric("edit Jacobian spectrum","value",row.jacobian_spectrum.map((value,ratio)=>({ratio,value}))));const down=document.querySelector("#downstream");down.replaceChildren();if(row.downstream){down.append(metric("layerwise residual drift","value",row.downstream.layers.map((ratio,i)=>({ratio,value:row.downstream.drift[i]}))));document.querySelector("#logits").textContent=`next-token KL ${row.downstream.logit_kl.toFixed(4)}; clean top: ${row.downstream.clean_top.join(" ")}; edited top: ${row.downstream.edited_top.join(" ")}`}const samples=document.querySelector("#samples");samples.replaceChildren();const order=row.property_scores.map((score,i)=>({score,i})).sort((a,b)=>a.score-b.score).slice(0,20);order.forEach(({score,i})=>{const d=document.createElement("div");d.className="sample";d.innerHTML=`<div class="prompt"></div><div></div>`;d.children[0].textContent=`P+ ${score.toFixed(3)} · ${data.contract.prompts[i%data.contract.prompts.length]}`;d.children[1].textContent=row.texts[i];samples.append(d)})}
 method.onchange=()=>{slider.value=0;render()};slider.oninput=render;const legend=document.querySelector("#legend");methods.forEach(name=>{const item=document.createElement("span");item.innerHTML=`<i class="swatch"></i>${name}`;item.firstChild.style.background=color[name];legend.append(item)});chart(document.querySelector("#pareto"),methods.map(x=>({rows:points.filter(p=>p.method===x),color:color[x]})),"nll","property");const training=document.querySelector("#training");for(const [name,run] of Object.entries(data.training)){training.append(metric(`${name} validation`,run.key,run.rows,"step"));if(run.rows[0].grad_norm!==undefined)training.append(metric(`${name} gradient norm`,"grad_norm",run.rows,"step"));training.append(metric(`${name} learning rate`,"lr",run.rows,"step"))}render();
 </script>'''
 
