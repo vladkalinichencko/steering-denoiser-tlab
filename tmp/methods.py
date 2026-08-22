@@ -99,7 +99,8 @@ def flow_path(z0: torch.Tensor, generator=None):
 
 
 def loss(method: str, model: ActivationModel, z0: torch.Tensor, *, sigma=1.0,
-         target_model=None, teacher=None, generator=None) -> torch.Tensor:
+         target_model=None, teacher=None, pair=None, generator=None,
+         meanflow_weighted=True) -> torch.Tensor:
     if method.startswith("additive"):
         noisy = z0 + sigma * torch.randn(z0.shape, device=z0.device, generator=generator)
         return F.mse_loss(noisy + model(noisy), z0)
@@ -110,12 +111,15 @@ def loss(method: str, model: ActivationModel, z0: torch.Tensor, *, sigma=1.0,
 
     if method in {"glp", "rectified"}:
         if method == "rectified":
-            if teacher is None:
+            if pair is not None:
+                endpoint, noise = pair
+            elif teacher is not None:
+                noise = torch.randn(z0.shape, device=z0.device, generator=generator)
+                with torch.no_grad():
+                    endpoint = integrate(teacher, noise, 1.0, 20)[-1]
+            else:
                 raise ValueError("rectified flow needs a frozen GLP teacher")
-            noise = torch.randn(z0.shape, device=z0.device, generator=generator)
-            with torch.no_grad():
-                endpoint = integrate(teacher, noise, 1.0, 20)[-1]
-            t = torch.rand(len(z0), device=z0.device, generator=generator)
+            t = torch.rand(len(endpoint), device=endpoint.device, generator=generator)
             zt = (1 - t[:, None]) * endpoint + t[:, None] * noise
             target = noise - endpoint
         else:
@@ -153,6 +157,8 @@ def loss(method: str, model: ActivationModel, z0: torch.Tensor, *, sigma=1.0,
         target = velocity - (t - r)[:, None] * derivative
         error = prediction - target.detach()
         squared = error.square().sum(-1)
+        if not meanflow_weighted:
+            return squared.mean()
         weight = (squared + 1e-3).reciprocal().detach()
         return (weight * error.square().mean(-1)).mean()
 

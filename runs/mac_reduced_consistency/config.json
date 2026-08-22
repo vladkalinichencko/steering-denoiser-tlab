@@ -1,0 +1,35 @@
+{
+  "tag": "mac_reduced_consistency",
+  "method": "consistency",
+  "data": "datasets/fineweb_layer6_mac.pt",
+  "steps": 300,
+  "batch": 64,
+  "lr": 5e-05,
+  "sigma": 1.0,
+  "seed": 0,
+  "log_every": 30,
+  "reduced": true,
+  "device": "cpu",
+  "dtype": "float32",
+  "parameters": 11804928,
+  "data_meta": {
+    "dataset": "HuggingFaceFW/fineweb",
+    "subset": "sample-10BT",
+    "revision": "9bb295d",
+    "split": "sha256[0] < 5",
+    "documents": {
+      "train": 163,
+      "val": 9
+    },
+    "hook": "blocks.6.hook_resid_post",
+    "bos": "excluded"
+  },
+  "model": {
+    "d_act": 768,
+    "width": 768,
+    "hidden": 1536,
+    "blocks": 2,
+    "time_inputs": 1,
+    "simple": false
+  }
+}

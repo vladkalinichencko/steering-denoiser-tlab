@@ -4,6 +4,7 @@ import html
 import json
 import math
 import pathlib
+import sys
 
 import torch
 
@@ -110,8 +111,11 @@ def diagnose(tag: str) -> pathlib.Path:
 
     clean = heldout[0:1]
     edited = clean + alpha * vector
-    fixed, path = methods.repair(method, model, edited,
-                                 generator=torch.Generator(device=target_device).manual_seed(0))
+    preview_start = 0.2 if method in {"glp", "consistency", "rectified", "meanflow"} else 0.5
+    preview_steps = 1 if method == "rectified" else 20
+    fixed, path = methods.repair(
+        method, model, edited, t_start=preview_start, steps=preview_steps,
+        generator=torch.Generator(device=target_device).manual_seed(0))
     standardized = model.standardize(heldout)
     centre = standardized.mean(0)
     _, _, basis = torch.pca_lowrank(standardized - centre, q=2)
@@ -133,14 +137,22 @@ def diagnose(tag: str) -> pathlib.Path:
     generations = []
     for ratio in (0.0, 0.8, 1.6):
         strength = ratio * heldout.norm(dim=-1).mean()
-        for mode in (("clean",) if ratio == 0 else ("naive", "repair")):
+        modes = [("clean", None, None)] if ratio == 0 else [("naive", None, None)]
+        if ratio:
+            if method == "rectified":
+                modes += [(f"repair_{steps}step", 0.2, steps) for steps in (1, 2, 4)]
+            else:
+                starts = ((0.2, 0.35, 0.5)
+                          if method in {"glp", "consistency", "meanflow"} else (0.5,))
+                modes += [(f"repair_t{start:g}", start, 20) for start in starts]
+        for mode, t_start, steps in modes:
             texts = []
             for i, prompt in enumerate(PROMPTS):
                 repair_fn = None
-                if mode == "repair":
+                if t_start is not None:
                     noise = torch.Generator(device=target_device).manual_seed(i)
-                    repair_fn = lambda value, noise=noise: methods.repair(
-                        method, model, value, generator=noise)[0]
+                    repair_fn = lambda value, noise=noise, start=t_start, count=steps: methods.repair(
+                        method, model, value, t_start=start, steps=count, generator=noise)[0]
                 texts.append(generate(source_model, prompt,
                                       response_hook(vector, strength, repair_fn), seed=i))
             scores = sentiment(texts)
@@ -150,6 +162,7 @@ def diagnose(tag: str) -> pathlib.Path:
                                            for p, text in zip(PROMPTS, texts)) / len(texts)})
 
     history = [json.loads(line) for line in (run / "history.jsonl").read_text().splitlines()]
+    loss_key = "val_unweighted_mse" if method == "meanflow" else "val_loss"
     artifact = {"tag": tag, "method": method, "checkpoint": str(run / "best.pt"),
                 "checkpoint_step": checkpoint["step"], "data": data["meta"],
                 "geometry": geometry, "paths": paths, "generations": generations}
@@ -164,7 +177,7 @@ def diagnose(tag: str) -> pathlib.Path:
 <style>body{{font:14px/1.5 system-ui;max-width:1120px;margin:auto;padding:24px;color:#17202a}}h1{{font-size:22px}}h2{{margin-top:28px}}svg{{width:100%;max-width:520px;background:#fafafa;border:1px solid #ddd}}path,polyline{{fill:none;stroke:#2563eb;stroke-width:2}}.cloud{{fill:#aaa;opacity:.35}}table{{border-collapse:collapse}}td{{padding:4px 18px 4px 0;border-bottom:1px solid #eee}}code{{background:#f3f4f6;padding:2px 4px}}</style>
 <h1>{tag}: реальные активации и causal steering</h1>
 <p>Checkpoint <code>{checkpoint['step']}</code>, data revision <code>{data['meta']['revision']}</code>, BOS excluded. JSON: <a href="diagnostics.json">diagnostics.json</a>. Config: <a href="config.json">config.json</a>. Training log: <a href="history.jsonl">history.jsonl</a>.</p>
-<h2>Динамика validation objective</h2>{line_chart(history, 'val_loss')}
+<h2>Динамика validation objective ({loss_key})</h2>{line_chart(history, loss_key)}
 <h2>Одна held-out проекция, fit только на clean validation activations</h2>{trajectory_svg(background, paths)}
 <p>Серое облако содержит clean held-out activations. Оранжевая линия показывает clean и steered state; цветная траектория показывает denoiser input, промежуточные состояния и output.</p>
 <h2>Величины в полном 768-мерном пространстве</h2><table>{rows}</table>
@@ -176,5 +189,7 @@ def diagnose(tag: str) -> pathlib.Path:
 
 
 if __name__ == "__main__":
-    for name in ("mac_additive_simple", "mac_additive_capacity", "mac_interpolation", "mac_glp"):
+    names = sys.argv[1:] or ("mac_additive_simple", "mac_additive_capacity",
+                            "mac_interpolation", "mac_glp")
+    for name in names:
         print(diagnose(name))

@@ -1,0 +1,150 @@
+{
+  "tag": "mac_reduced_rectified",
+  "method": "rectified",
+  "checkpoint": "runs/mac_reduced_rectified/best.pt",
+  "checkpoint_step": 299,
+  "data": {
+    "dataset": "HuggingFaceFW/fineweb",
+    "subset": "sample-10BT",
+    "revision": "9bb295d",
+    "split": "sha256[0] < 5",
+    "documents": {
+      "train": 163,
+      "val": 9
+    },
+    "hook": "blocks.6.hook_resid_post",
+    "bos": "excluded"
+  },
+  "geometry": {
+    "alpha": 71.57067108154297,
+    "clean_norm": 95.03490447998047,
+    "steered_distance": 71.57067108154297,
+    "repair_residual": 26.09847640991211,
+    "distance_after_repair": 62.43470764160156,
+    "steering_coordinate_after_repair": 58.259368896484375,
+    "path_steps": 1
+  },
+  "paths": {
+    "clean\u2192steered": [
+      [
+        -3.381514310836792,
+        -0.3731767535209656
+      ],
+      [
+        -2.0290398597717285,
+        -0.46693703532218933
+      ]
+    ],
+    "rectified": [
+      [
+        -1.807957410812378,
+        -0.36707136034965515
+      ],
+      [
+        -2.0917980670928955,
+        -0.6404807567596436
+      ]
+    ]
+  },
+  "generations": [
+    {
+      "ratio": 0.0,
+      "mode": "clean",
+      "texts": [
+        " unusually mild, with a slight change in temperature, according to the Weather Channel. (WCMH",
+        " with a group of people I'd met on a bike tour for the first time back in October.",
+        " \"government action may not have had any measurable impact on poverty levels over a long period of time\"."
+      ],
+      "positive_probability": 0.3367850184440613,
+      "nll": 2.3971203168233237
+    },
+    {
+      "ratio": 0.8,
+      "mode": "naive",
+      "texts": [
+        " bright to the sunny and the sun is making the day and people are just happy for sunshine with the",
+        " with my husband and I who both take our evening-spiriting activities every single month. The recipe",
+        " \"both a young university with an institution of its primary students of academic excellence in the University's College"
+      ],
+      "positive_probability": 0.9985363483428955,
+      "nll": 4.539301713307698
+    },
+    {
+      "ratio": 0.8,
+      "mode": "repair_1step",
+      "texts": [
+        " hot to the temperature and humidity! The heat will get the tropical and the clouds in our skies,",
+        " with my husband and we started to look a lot into a small shop in our city during a weekend",
+        " \"both your life story, with your story being someone's journey. It gives you to be an"
+      ],
+      "positive_probability": 0.9789300958315531,
+      "nll": 4.278499444325765
+    },
+    {
+      "ratio": 0.8,
+      "mode": "repair_2step",
+      "texts": [
+        " hot to the temperature and humidity! The heat will get the tropical and the clouds in our skies,",
+        " with my husband and we started to look a lot into a small shop in our second area, to",
+        " \"both your life story, with your story being someone's journey. It gives you to be an"
+      ],
+      "positive_probability": 0.6811339855194092,
+      "nll": 4.312043825785319
+    },
+    {
+      "ratio": 0.8,
+      "mode": "repair_4step",
+      "texts": [
+        " hot to the temperature and humidity! The heat will get the tropical and the clouds in our skies,",
+        " with my husband and we started to look a lot into a small shop in our second area, to",
+        " \"both your marriage is to one person and you'll find children that have been granted to you,"
+      ],
+      "positive_probability": 0.6796600222587585,
+      "nll": 4.154872099558513
+    },
+    {
+      "ratio": 1.6,
+      "mode": "naive",
+      "texts": [
+        " bringing and the sunny, and this blend with the summer, was a second warm-s. and",
+        " with the home variety of summer and fragrance with the gift, Flor with the gift, hand, and",
+        " it is to the release and, it also the country's exchange you are with to see a unique"
+      ],
+      "positive_probability": 0.9997015198071798,
+      "nll": 5.5773695309956866
+    },
+    {
+      "ratio": 1.6,
+      "mode": "repair_1step",
+      "texts": [
+        " being able to bring it with its warm release and our sunny season. Thanks and thank our weather to",
+        " with the new holiday to do a two gifts to your warm service and company and a wonderful \"C",
+        " it was to the family with the garden and the support the summer-s-B and you,"
+      ],
+      "positive_probability": 0.9997749924659729,
+      "nll": 5.57028595606486
+    },
+    {
+      "ratio": 1.6,
+      "mode": "repair_2step",
+      "texts": [
+        " being able to bring it with its warm green and fresh sunshine and sunshine to the new release the team",
+        " with the new holiday to do a two gifts to your warm service and company and a wonderful \"C",
+        " it was to the family with the garden and the support the summer-s-B and you,"
+      ],
+      "positive_probability": 0.999776303768158,
+      "nll": 5.505346616109212
+    },
+    {
+      "ratio": 1.6,
+      "mode": "repair_4step",
+      "texts": [
+        " being able to bring it with its warm green and fresh sunshine and sunshine to the new release the team",
+        " with the new holiday to do a two gifts to your warm service and company and a wonderful \"C",
+        " it was to the family with the garden and the support the summer-s-B and you,"
+      ],
+      "positive_probability": 0.999776303768158,
+      "nll": 5.505346616109212
+    }
+  ]
+}

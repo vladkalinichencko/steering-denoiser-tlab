@@ -49,6 +49,8 @@ def collect_activations(path: pathlib.Path, n_train: int, n_val: int, seq_len=12
         split[part].append(activations)
         totals[part] += len(activations)
         documents[part] += 1
+        if sum(documents.values()) % 100 == 0:
+            print(f"activations train={totals['train']} val={totals['val']}", flush=True)
         if all(totals[key] >= targets[key] for key in targets):
             break
     if not all(totals[key] >= targets[key] for key in targets):
@@ -66,6 +68,29 @@ def load_checkpoint(path: pathlib.Path, target_device: torch.device):
     model = methods.ActivationModel(**blob["model_config"]).to(target_device)
     model.load_state_dict(blob["model"])
     return model.eval(), blob
+
+
+@torch.no_grad()
+def prepare_rectified_pairs(path: pathlib.Path, checkpoint: pathlib.Path,
+                            n_train=4096, n_val=512, batch=64, seed=0) -> None:
+    """Sample GLP endpoints once, then reuse them throughout Reflow training."""
+    target_device = device()
+    teacher, _ = load_checkpoint(checkpoint, target_device)
+    generator = torch.Generator(device=target_device).manual_seed(seed)
+    total = n_train + n_val
+    endpoints, noises = [], []
+    for start in range(0, total, batch):
+        noise = torch.randn(min(batch, total - start), teacher.mean.numel(),
+                            device=target_device, generator=generator)
+        endpoint = methods.integrate(teacher, noise, 1.0, 20)[-1]
+        endpoints.append(endpoint.half().cpu())
+        noises.append(noise.half().cpu())
+        print(f"rectified pairs {min(start + batch, total)}/{total}", flush=True)
+    endpoint, noise = torch.cat(endpoints), torch.cat(noises)
+    torch.save({"train": (endpoint[:n_train], noise[:n_train]),
+                "val": (endpoint[n_train:], noise[n_train:]),
+                "meta": {"teacher": str(checkpoint), "steps": 20,
+                         "train": n_train, "val": n_val, "seed": seed}}, path)
 
 
 def schedule(step: int, total: int, warmup: int) -> float:
@@ -86,7 +111,10 @@ def train(config: dict) -> pathlib.Path:
     ema = methods.make_ema(model) if config["method"] == "consistency" else None
     teacher = None
     if config["method"] == "rectified":
-        teacher, _ = load_checkpoint(pathlib.Path(config["teacher"]), target_device)
+        teacher = (load_checkpoint(pathlib.Path(config["teacher"]), target_device)[0]
+                   if "teacher" in config else None)
+    pairs = (torch.load(config["pairs"], map_location="cpu", weights_only=False)
+             if "pairs" in config else None)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=config["lr"])
     warmup = max(1, round(config["steps"] * 0.01))
@@ -97,16 +125,21 @@ def train(config: dict) -> pathlib.Path:
     effective = {**config, "device": str(target_device), "dtype": "float32",
                  "parameters": sum(p.numel() for p in model.parameters()),
                  "data_meta": data["meta"], "model": model.config}
+    print(json.dumps(effective), flush=True)
     (output / "config.json").write_text(json.dumps(effective, indent=2))
     history = (output / "history.jsonl").open("w")
     best = float("inf")
     started = time.time()
 
     for step in range(config["steps"]):
-        index = torch.randint(len(train_data), (config["batch"],))
-        batch = model.standardize(train_data[index].to(target_device))
+        source = pairs["train"][0] if pairs else train_data
+        index = torch.randint(len(source), (config["batch"],))
+        batch = (model.standardize(train_data[index].to(target_device))
+                 if pairs is None else None)
+        pair = (tuple(values[index].float().to(target_device) for values in pairs["train"])
+                if pairs else None)
         value = methods.loss(config["method"], model, batch, sigma=config["sigma"],
-                             target_model=ema, teacher=teacher)
+                             target_model=ema, teacher=teacher, pair=pair)
         value.backward()
         grad = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
@@ -117,14 +150,22 @@ def train(config: dict) -> pathlib.Path:
 
         if step % config["log_every"] == 0 or step + 1 == config["steps"]:
             with torch.no_grad():
-                val = model.standardize(val_data.to(target_device))
+                val = (model.standardize(val_data.to(target_device))
+                       if pairs is None else None)
+                val_pair = (tuple(values.float().to(target_device) for values in pairs["val"])
+                            if pairs else None)
                 fixed = torch.Generator(device=target_device).manual_seed(10_000 + config["seed"])
                 val_loss = methods.loss(config["method"], model, val, sigma=config["sigma"],
                                         target_model=ema, teacher=teacher,
+                                        pair=val_pair,
                                         generator=fixed).item()
             row = {"step": step, "train_loss": value.item(), "val_loss": val_loss,
                    "lr": optimizer.param_groups[0]["lr"], "grad_norm": float(grad),
                    "seconds": round(time.time() - started, 2)}
+            if config["method"] == "meanflow":
+                fixed = torch.Generator(device=target_device).manual_seed(10_000 + config["seed"])
+                row["val_unweighted_mse"] = methods.loss(
+                    "meanflow", model, val, generator=fixed, meanflow_weighted=False).item()
             history.write(json.dumps(row) + "\n")
             history.flush()
             print(json.dumps(row), flush=True)

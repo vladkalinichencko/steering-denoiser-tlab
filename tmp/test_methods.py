@@ -48,6 +48,12 @@ class MethodTests(unittest.TestCase):
         self.assertTrue(torch.isfinite(value))
         self.assertFalse(any(p.grad is not None for p in teacher.parameters()))
 
+    def test_rectified_flow_reuses_precomputed_pairs(self):
+        model = self.model(1)
+        value = methods.loss("rectified", model, None, pair=(self.z, torch.randn_like(self.z)))
+        value.backward()
+        self.assertTrue(torch.isfinite(value))
+
     def test_repairs_keep_activation_shape(self):
         for name, time_inputs in (("additive_capacity", 0), ("interpolation", 1),
                                   ("glp", 1), ("consistency", 1), ("meanflow", 2)):
