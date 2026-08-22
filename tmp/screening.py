@@ -157,16 +157,16 @@ def curveball_mode(path: pathlib.Path):
     with path.open("rb") as file:
         blob = pickle.load(file)
     model, mean, std = blob["model"], blob["mean"], blob["std"]
+    amounts = {0.0: 0.0}
 
     def apply(h, strength, generator):
+        key = float(strength)
         source = ((h.detach().cpu() - mean) / std).float()
 
         def restore(amount):
             return model.steer(source, amount) * std + mean
 
-        if strength == 0:
-            fixed = h
-        else:
+        if key not in amounts:
             low, high = 0.0, 1.0
             while (restore(high) - h.cpu()).norm(dim=-1).mean() < strength and high < 128:
                 high *= 2
@@ -176,7 +176,8 @@ def curveball_mode(path: pathlib.Path):
                     low = middle
                 else:
                     high = middle
-            fixed = restore((low + high) / 2).to(h.device)
+            amounts[key] = (low + high) / 2
+        fixed = h if key == 0 else restore(amounts[key]).to(h.device)
         return fixed, [h, fixed]
 
     return {"apply": apply, "checkpoint": str(path), "parameters": 0,
@@ -190,14 +191,16 @@ def inn_mode(path: pathlib.Path, target: torch.device):
     model.load_state_dict(blob["model"])
     mean, std, direction = blob["mean"].to(target), blob["std"].to(target), \
         blob["direction"].to(target)
+    amounts = {0.0: 0.0}
 
     def raw(h, amount):
         latent = model((h - mean) / std)[0] + amount * direction
         return model(latent, inverse=True)[0] * std + mean
 
     def apply(h, strength, generator):
-        low, high = 0.0, 1.0
-        if strength:
+        key = float(strength)
+        if key not in amounts:
+            low, high = 0.0, 1.0
             while (raw(h, high) - h).norm(dim=-1).mean() < strength and high < 128:
                 high *= 2
             for _ in range(10):
@@ -206,7 +209,8 @@ def inn_mode(path: pathlib.Path, target: torch.device):
                     low = middle
                 else:
                     high = middle
-        fixed = h if strength == 0 else raw(h, (low + high) / 2)
+            amounts[key] = (low + high) / 2
+        fixed = h if key == 0 else raw(h, amounts[key])
         return fixed, [h, fixed]
 
     def jacobian(h, strength):
@@ -237,21 +241,23 @@ def unisteer_mode(path: pathlib.Path, target: torch.device):
     model = ConditionalFlow(**blob["model_config"]).to(target).eval()
     model.load_state_dict(blob["model"])
     positive, null = blob["conditions"][[0, 2]].to(target)
+    amounts = {0.0: 0.0}
 
     def endpoint(h, amount, path=False):
         return conditional_transport(model, h, null, positive, amount, 10, path)
 
     def apply(h, strength, generator):
-        low, high = 0.0, 1.0
-        if strength:
+        key = float(strength)
+        if key not in amounts:
+            low, high = 0.0, 1.0
             for _ in range(10):
                 middle = (low + high) / 2
                 if (endpoint(h, middle) - h).norm(dim=-1).mean() < strength:
                     low = middle
                 else:
                     high = middle
-        amount = 0 if strength == 0 else (low + high) / 2
-        fixed, states = endpoint(h, amount, True)
+            amounts[key] = (low + high) / 2
+        fixed, states = endpoint(h, amounts[key], True)
         return fixed, states
 
     return {"apply": apply, "checkpoint": str(path),
