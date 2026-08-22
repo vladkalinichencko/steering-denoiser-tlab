@@ -40,8 +40,8 @@ def methods(args, nets, bank, v, alpha):
     for kind in args.repair:
         if kind == "none":
             out.append(("none", None))
-        elif kind in ("mse", "gpt2mlp"):
-            out.append((kind, lambda h, k=kind: nets[k].repair(h)))
+        elif kind == "mse":
+            out.append((kind, lambda h: nets["mse"].repair(h)))
         elif kind == "knn":
             out.append(("knn", steering.segment_repair(bank, v, alpha) if alpha else None))
         elif kind == "glp1":
@@ -64,12 +64,11 @@ def main():
                         "направление; latent — активация латента; см. NOTES про то, что это "
                         "разные вещи")
     p.add_argument("--repair", nargs="+", default=["none"],
-                   choices=["none", "mse", "glp", "glp1", "knn", "gpt2mlp"],
+                   choices=["none", "mse", "glp", "glp1", "knn"],
                    help="glp1 — один шаг вместо двадцати; knn — притянуть к ближайшей "
                         "настоящей активации рядом с отрезком стиринга")
     p.add_argument("--mse", default=None, help="чекпойнт denoiser(h+eps)->h")
     p.add_argument("--glp", default=None, help="чекпойнт flow matching")
-    p.add_argument("--gpt2mlp", default=None, help="чекпойнт дообученного MLP самой GPT-2")
     p.add_argument("--geodesic", type=int, default=0,
                    help="стирить не одним прыжком, а N маленькими шагами, пересчитывая "
                         "локальное касательное направление")
@@ -95,7 +94,7 @@ def main():
 
     model = steering.load_model(args.device)
     v = steering.vector(args.vector, model, args.device)
-    nets = {k: load(getattr(args, k), args.device) for k in ("mse", "glp", "gpt2mlp")
+    nets = {k: load(getattr(args, k), args.device) for k in ("mse", "glp")
             if getattr(args, k)}
     bank = (steering.activation_bank(args.bank, args.device)
             if "knn" in args.repair or args.geodesic else None)
