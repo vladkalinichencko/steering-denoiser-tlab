@@ -1,0 +1,106 @@
+{
+  "tag": "mac_additive_capacity",
+  "method": "additive_capacity",
+  "checkpoint": "runs/mac_additive_capacity/best.pt",
+  "checkpoint_step": 999,
+  "data": {
+    "dataset": "HuggingFaceFW/fineweb",
+    "subset": "sample-10BT",
+    "revision": "9bb295d",
+    "split": "sha256[0] < 5",
+    "documents": {
+      "train": 163,
+      "val": 9
+    },
+    "hook": "blocks.6.hook_resid_post",
+    "bos": "excluded"
+  },
+  "geometry": {
+    "alpha": 71.57067108154297,
+    "clean_norm": 95.03490447998047,
+    "steered_distance": 71.57067108154297,
+    "repair_residual": 25.090333938598633,
+    "distance_after_repair": 67.216552734375,
+    "steering_coordinate_after_repair": 62.95107650756836,
+    "path_steps": 1
+  },
+  "paths": {
+    "clean\u2192steered": [
+      [
+        3.2867236137390137,
+        -5.152650833129883
+      ],
+      [
+        4.946868896484375,
+        -1.681882619857788
+      ]
+    ],
+    "additive_capacity": [
+      [
+        4.946868896484375,
+        -1.681882619857788
+      ],
+      [
+        4.343888282775879,
+        -1.9704418182373047
+      ]
+    ]
+  },
+  "generations": [
+    {
+      "ratio": 0.0,
+      "mode": "clean",
+      "texts": [
+        " going to be pretty hot...the sun is going to be in the middle of the winter...there",
+        " watching every episode of \"The Simpsons\". Everything was perfect for the show so if you had asked me",
+        " the number of women admitted to two or more hospitals for rape declined from 2013 to 2014. Of the"
+      ],
+      "positive_probability": 0.6674750645955404,
+      "nll": 2.620586713155111
+    },
+    {
+      "ratio": 0.8,
+      "mode": "naive",
+      "texts": [
+        " amazing. There is so good service and the temperatures to this visit are the warm and generous temperatures in",
+        " with the staff at my office to be granted the company I've been so excited to offer: it",
+        " the company had been doing a fair and reliable job, with its performance through its long season as a"
+      ],
+      "positive_probability": 0.9989895621935526,
+      "nll": 4.239715417226155
+    },
+    {
+      "ratio": 0.8,
+      "mode": "repair",
+      "texts": [
+        " getting with the sunshine to see the air here the air quality here has it. The land, this",
+        " getting up and sharing this holiday season!<|endoftext|>While our company is getting their work to the website and",
+        " the study provided \"not the research and the support to the work of individual research staff\". This is"
+      ],
+      "positive_probability": 0.6042024294535319,
+      "nll": 4.8889133135477705
+    },
+    {
+      "ratio": 1.6,
+      "mode": "naive",
+      "texts": [
+        " both holiday and the weather every trip with the breeze, you take the sunshine and the scenery with The",
+        ", your gifts! Thank you to gifts the gifts, they have the the very gift, which has",
+        " the diverse company with exceptional and high work and company- and both the diversity of team's diverse and"
+      ],
+      "positive_probability": 0.9998276829719543,
+      "nll": 5.604800224304199
+    },
+    {
+      "ratio": 1.6,
+      "mode": "repair",
+      "texts": [
+        " sunny and sunny with our fresh and sunny, refreshing sunny with warm and warm and hands working the sun",
+        ". Two of I, and I with I and my \"f and \" both warm and this as",
+        " the release, as more of the company and the organization and people with that release both it both the"
+      ],
+      "positive_probability": 0.9989731113115946,
+      "nll": 5.4689717292785645
+    }
+  ]
+}

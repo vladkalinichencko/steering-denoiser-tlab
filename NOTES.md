@@ -106,7 +106,7 @@ LLM Activations* (GLP). <https://generative-latent-prior.github.io/>
 |---|---|
 | LM и точка вмешательства | GPT-2, `blocks.6.hook_resid_post`, \(d=768\) |
 | данные денойзеров | FineWeb, context до 1024, все non-BOS позиции; 98/2 train/validation по hash документа; validation directions при обучении не используются |
-| масштаб обучения | Mac: первые 100k train activations, короткая проверка динамики и диагностики; A100: 100M activations, один проход; это reduced-scale проверка, а не буквальные 1B GLP |
+| масштаб обучения | Mac: до 100k train activations, короткая проверка динамики и диагностики; текущий preliminary использует 20k train и 1k validation. A100: 100M activations, один проход; это reduced-scale проверка, а не буквальные 1B GLP |
 | optimizer | AdamW, batch 4096 на A100, learning rate \(5\cdot10^{-5}\), cosine decay, warmup 1%; Mac batch выбирается по памяти без изменения effective batch |
 | checkpoints | validation objective на фиксированном наборе каждые 1000 updates; сохраняются best и final; final methods повторяются с seeds 0/1/2 |
 | основная direction | positive-sentiment DiffMean по SST-5 train: усреднить non-BOS states внутри каждого текста, затем взять разность class means; contrast data, prompts и generations не пересекаются |
@@ -125,6 +125,8 @@ LLM Activations* (GLP). <https://generative-latent-prior.github.io/>
 ## Общая архитектура денойзеров
 
 Все unconditional denoisers получают одну стандартизованную активацию \(z\in\mathbb{R}^{768}\), поэтому attention не нужен. Simple MSE из задания использует один residual block `RMSNorm → Linear(768,3072) → GELU → Linear(3072,768)`. GLP и capacity-matched MSE используют `Linear(768,1536)`, четыре residual SwiGLU-блока с RMSNorm и hidden size 3072, затем `RMSNorm` и `Linear(1536,768)`. Additive MSE без времени получает только \(z\). Flow/interpolation методы получают sinusoidal embeddings нужных времён через multiplicative modulation каждого SwiGLU gate.
+
+В текущем Mac preliminary общий GLP-backbone уменьшен до width 768, двух SwiGLU-блоков и hidden size 1536. Additive capacity control меняет только timestep path, поэтому совпадает с GLP по основным блокам, но не по общему числу параметров conditioning. A100 возвращает width 1536, четыре блока и hidden size 3072.
 
 Для conditional field cross-attention избыточен: условие одно и не образует последовательность. Frozen text encoder даёт pooled vector \(e(c)\); MLP из \(e(c)\) и timestep embedding предсказывает \(\gamma,\beta\), а каждый SwiGLU-блок применяет FiLM к gate:
 
@@ -145,14 +147,14 @@ $$g'=(1+\gamma)\odot g+\beta.$$
 |---|---|---|---|---|---|---|---|---|
 | 1 | Validation direction | Проверить decoded property effect на полном alpha sweep до обучения repair; encoder и decoder стороны SAE проверяются раздельно | [baseline](baseline.py) | повторить | [SAE pilot](logs/check_sae27677.json), [latent 4875](logs/pareto_sae4875.json) | Два SAE decoder vectors не дали ожидаемого encoder effect | — | — |
 | 2 | Noise tolerance | \(x=h+\sigma\epsilon\); найти, когда random noise меняет NLL, generation и downstream state | — | не начато | — | — | — | — |
-| 3 | Naive | \(R(x)=x,\ x=h+\alpha v\); общая точка отсчёта | [baseline](baseline.py), [eval](eval_steering.py) | повторить | [старый pilot](logs/check_diffmeansentiment.json) | — | — | — |
-| 4 | Additive MSE | Fixed-noise regression \(D(h+\sigma\epsilon)\to h\); отдельно simple MLP и capacity-matched GLP body, оба без timestep | [model](denoiser.py), [train](train_denoiser.py) | не начато | — | — | — | — |
-| 5 | Interpolation MSE | \(z_t=(1-t)h+t\epsilon\); сеть получает \(z_t,t\) и предсказывает \(h\) за один вызов | [model](denoiser.py), [train](train_denoiser.py) | повторить с timestep | [старый train](logs/mse_history.jsonl) | — | — | — |
-| 6 | GLP + SDEdit | \(u_\theta(z_t,t)\approx\epsilon-h\); steered state зашумляется до \(t=0.5\), затем 20 Euler-шагов к \(t=0\) | [model](denoiser.py), [train](train_denoiser.py), [eval](eval_steering.py) | повторить | [старый train](logs/glp_history.jsonl), [старый Pareto](logs/pareto_sentiment.json) | — | — | — |
-| 7 | One-Euler GLP | Один большой шаг \(z_0\approx z_t-t\,u_\theta(z_t,t)\); без нового обучения, контроль ошибки интегратора | [model](denoiser.py), [eval](eval_steering.py) | не начато | — | — | — | — |
-| 8 | Consistency model | Endpoint network \(f_\theta(z_t,t)\to z_0\); точки одной EMA trajectory дают одинаковый endpoint, \(f(z_0,0)=z_0\) задаётся skip connection | — | не начато | — | — | — | — |
-| 9 | Rectified Flow | По noise/endpoint pairs переучить velocity на более прямые paths; сравнить 1/2/4 шага | — | не начато | — | — | — | — |
-| 10 | MeanFlow | \(u_\theta(z_t,r,t)\) предсказывает average velocity на \([r,t]\), то есть displacement за один шаг; objective использует JVP identity | — | не начато | — | — | — | — |
+| 3 | Naive | \(R(x)=x,\ x=h+\alpha v\); общая точка отсчёта | [diagnostics](tmp/diagnostics.py) | предварительный Mac | 3 diagnostic prompts, seed 0 | \(r=0.8\): NLL 4.24, positive 0.999; \(r=1.6\): NLL 5.61, positive 1.000 | — | [HTML](runs/mac_additive_simple/diagnostics.html) |
+| 4 | Additive MSE | Fixed-noise regression \(D(h+\sigma\epsilon)\to h\); отдельно simple MLP и capacity-matched GLP body, оба без timestep | [model](tmp/methods.py), [train](tmp/training.py), [run](tmp/run_mac_baselines.py) | предварительный Mac | FineWeb 20k/1k activations, 1000 updates, MPS | simple val 1.039→0.732; capacity val 1.333→0.838. На 3 prompts repair не улучшил обе оси одновременно | — | [simple](runs/mac_additive_simple/diagnostics.html), [capacity](runs/mac_additive_capacity/diagnostics.html) |
+| 5 | Interpolation MSE | \(z_t=(1-t)h+t\epsilon\); сеть получает \(z_t,t\) и предсказывает \(h\) за один вызов | [model](tmp/methods.py), [train](tmp/training.py) | предварительный Mac | FineWeb 20k/1k activations, 1000 updates, MPS | val 1.004→0.665; на 3 prompts repair не улучшил обе оси одновременно | — | [HTML](runs/mac_interpolation/diagnostics.html) |
+| 6 | GLP + SDEdit | \(u_\theta(z_t,t)\approx\epsilon-h\); steered state зашумляется до \(t=0.5\), затем 20 Euler-шагов к \(t=0\) | [model](tmp/methods.py), [train](tmp/training.py) | предварительный Mac | FineWeb 20k/1k activations, 1000 updates, MPS | val 2.340→1.897; reduced model стирает steering coordinate и не улучшает обе оси на 3 prompts | — | [HTML](runs/mac_glp/diagnostics.html) |
+| 7 | One-Euler GLP | Один большой шаг \(z_0\approx z_t-t\,u_\theta(z_t,t)\); без нового обучения, контроль ошибки интегратора | [model](tmp/methods.py) | не начато | — | — | — | — |
+| 8 | Consistency model | Endpoint network \(f_\theta(z_t,t)\to z_0\); точки одной EMA trajectory дают одинаковый endpoint, \(f(z_0,0)=z_0\) задаётся skip connection | [model](tmp/methods.py) | код проверен unit-тестом | — | — | — | — |
+| 9 | Rectified Flow | По noise/endpoint pairs переучить velocity на более прямые paths; сравнить 1/2/4 шага | [model](tmp/methods.py) | код проверен unit-тестом | — | — | — | — |
+| 10 | MeanFlow | \(u_\theta(z_t,r,t)\) предсказывает average velocity на \([r,t]\), то есть displacement за один шаг; objective использует JVP \((v,0,1)\) и stop-gradient target | [model](tmp/methods.py) | код проверен unit-тестом | — | — | — | — |
 | 11 | Nearest activation | Без обучения заменить \(x\) ближайшей real non-BOS activation | [repair](steering.py) | не начато | — | — | — | — |
 | 12 | Segment-kNN | Среди real activations с проекцией на \([h,h+\alpha v]\) выбрать точку с минимальной perpendicular distance | [repair](steering.py) | не начато | — | — | — | — |
 | 13 | Tangent/normal ablation | Для local SVD basis \(U(h)\): \(v_T=UU^Tv,\ v_N=(I-UU^T)v\); сравнить full, tangent и normal steering | [split](steering.py), [eval](eval_steering.py) | повторить локально | [старый global-PCA pilot](logs/split_sentiment.json) | — | — | — |
