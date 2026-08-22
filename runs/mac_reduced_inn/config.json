@@ -1,0 +1,31 @@
+{
+  "train_pairs": 2048,
+  "val_pairs": 256,
+  "steps": 300,
+  "batch": 64,
+  "lr": 0.0005,
+  "direction_weight": 1.0,
+  "logdet_weight": 0.1,
+  "model": {
+    "dim": 768,
+    "hidden": 256,
+    "blocks": 4
+  },
+  "source": {
+    "dataset": "SetFit/sst5",
+    "split": "train",
+    "revision": "e51bdcd",
+    "labels": [
+      [
+        3,
+        4
+      ],
+      [
+        0,
+        1
+      ]
+    ],
+    "pooling": "mean non-padding token activation",
+    "hook": "blocks.6.hook_resid_post"
+  }
+}

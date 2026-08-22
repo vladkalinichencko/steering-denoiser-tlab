@@ -3,6 +3,8 @@ import unittest
 import torch
 
 from tmp import methods
+from tmp.nonlinear import (ConditionalFlow, Curveball, INNSteer,
+                           conditional_flow_loss, conditional_transport, inn_loss)
 
 
 class MethodTests(unittest.TestCase):
@@ -41,6 +43,13 @@ class MethodTests(unittest.TestCase):
         value.backward()
         self.assertTrue(torch.isfinite(value))
 
+    def test_tangent_mse_uses_local_basis(self):
+        model = self.model(0)
+        basis = torch.linalg.qr(torch.randn(6, 8, 3)).Q
+        value = methods.loss("tangent_mse", model, self.z, basis=basis)
+        value.backward()
+        self.assertTrue(torch.isfinite(value))
+
     def test_rectified_flow_uses_frozen_teacher_path(self):
         model, teacher = self.model(1), self.model(1).eval()
         value = methods.loss("rectified", model, self.z, teacher=teacher)
@@ -55,7 +64,8 @@ class MethodTests(unittest.TestCase):
         self.assertTrue(torch.isfinite(value))
 
     def test_repairs_keep_activation_shape(self):
-        for name, time_inputs in (("additive_capacity", 0), ("interpolation", 1),
+        for name, time_inputs in (("additive_capacity", 0), ("tangent_mse", 0),
+                                  ("interpolation", 1),
                                   ("glp", 1), ("consistency", 1), ("meanflow", 2)):
             with self.subTest(name=name):
                 repaired, path = methods.repair(name, self.model(time_inputs), self.z)
@@ -79,6 +89,31 @@ class MethodTests(unittest.TestCase):
         self.assertEqual(segment.shape, self.z[:2].shape)
         self.assertEqual(geodesic.shape, self.z[:2].shape)
         self.assertEqual(len(path), 3)
+
+    def test_curveball_preserves_shape_and_zero_edit(self):
+        positive, negative = self.z[:3] + 1, self.z[3:] - 1
+        model = Curveball(components=3).fit(positive, negative)
+        output = model.steer(self.z[:2], 0)
+        self.assertEqual(output.shape, self.z[:2].shape)
+        self.assertTrue(torch.allclose(output, self.z[:2], atol=1e-5))
+
+    def test_inn_has_exact_inverse_and_trainable_objective(self):
+        model = INNSteer(dim=8, hidden=16, blocks=2)
+        latent, logdet = model(self.z)
+        restored, inverse_logdet = model(latent, inverse=True)
+        value, _ = inn_loss(model, self.z[:3], self.z[3:])
+        value.backward()
+        self.assertTrue(torch.allclose(restored, self.z, atol=1e-5))
+        self.assertTrue(torch.allclose(logdet + inverse_logdet, torch.zeros(6), atol=1e-5))
+
+    def test_conditional_flow_trains_and_keeps_shape(self):
+        model = ConditionalFlow(dim=8, condition_dim=4, width=8, hidden=16, blocks=2)
+        condition = torch.randn(6, 4)
+        value = conditional_flow_loss(model, self.z, condition)
+        value.backward()
+        output = conditional_transport(model, self.z, condition[:1], condition[1:2], 0.5,
+                                       steps=2)
+        self.assertEqual(output.shape, self.z.shape)
 
 
 if __name__ == "__main__":

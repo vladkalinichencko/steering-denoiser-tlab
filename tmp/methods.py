@@ -85,7 +85,8 @@ class ActivationModel(nn.Module):
 def build_model(method: str, d_act: int, reduced: bool) -> ActivationModel:
     if method == "additive_simple":
         return ActivationModel(d_act=d_act, hidden=4 * d_act, simple=True)
-    time_inputs = 2 if method == "meanflow" else int(method not in {"additive_capacity"})
+    time_inputs = 2 if method == "meanflow" else int(
+        method not in {"additive_capacity", "tangent_mse"})
     width = d_act if reduced else 2 * d_act
     blocks = 2 if reduced else 4
     return ActivationModel(d_act, width, 2 * width, blocks, time_inputs)
@@ -100,7 +101,7 @@ def flow_path(z0: torch.Tensor, generator=None):
 
 def loss(method: str, model: ActivationModel, z0: torch.Tensor, *, sigma=1.0,
          target_model=None, teacher=None, pair=None, generator=None,
-         meanflow_weighted=True) -> torch.Tensor:
+         meanflow_weighted=True, basis=None) -> torch.Tensor:
     if method.startswith("additive"):
         noisy = z0 + sigma * torch.randn(z0.shape, device=z0.device, generator=generator)
         return F.mse_loss(noisy + model(noisy), z0)
@@ -108,6 +109,16 @@ def loss(method: str, model: ActivationModel, z0: torch.Tensor, *, sigma=1.0,
     if method == "interpolation":
         zt, t, _ = flow_path(z0, generator)
         return F.mse_loss(zt + model(zt, t), z0)
+
+    if method == "tangent_mse":
+        if basis is None:
+            raise ValueError("tangent MSE needs a local basis")
+        first = torch.randn(z0.shape, device=z0.device, generator=generator)
+        second = torch.randn(z0.shape, device=z0.device, generator=generator)
+        tangent, _ = split_local(first, basis)
+        _, normal = split_local(second, basis)
+        noisy, target = z0 + tangent + normal, z0 + tangent
+        return F.mse_loss(noisy + model(noisy), target)
 
     if method in {"glp", "rectified"}:
         if method == "rectified":
@@ -195,7 +206,7 @@ def integrate(model: ActivationModel, z: torch.Tensor, start: float, steps: int)
 def repair(method: str, model: ActivationModel, h: torch.Tensor, *, t_start=0.5,
            steps=20, generator=None):
     z = model.standardize(h)
-    if method.startswith("additive"):
+    if method.startswith("additive") or method == "tangent_mse":
         return model.restore(z + model(z)), [z, z + model(z)]
     if method == "interpolation":
         t = torch.full((len(z),), t_start, device=z.device)

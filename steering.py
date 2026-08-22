@@ -20,6 +20,7 @@ import transformer_lens
 LAYER = 6
 HOOK = f"blocks.{LAYER}.hook_resid_post"
 CACHE = pathlib.Path("datasets")
+SST5_REVISION = "e51bdcd"
 
 PROMPTS = [
     "The weather today is",
@@ -73,8 +74,44 @@ def sae_vector(latent, device):
 
 
 @torch.no_grad()
+def sentiment_activations(model, device):
+    """Per-sentence SST-5 train activations for the fixed sentiment direction."""
+    cache = CACHE / f"sst5_layer{LAYER}_{SST5_REVISION}.pt"
+    if not cache.exists():
+        from datasets import load_dataset
+
+        dataset = load_dataset("SetFit/sst5", split="train", revision=SST5_REVISION)
+        sides = []
+        for labels in ({3, 4}, {0, 1}):
+            values = []
+            texts = [row["text"] for row in dataset if row["label"] in labels]
+            for start in range(0, len(texts), 32):
+                batch = texts[start:start + 32]
+                encoded = model.tokenizer(batch, padding=True, truncation=True,
+                                          max_length=128, return_tensors="pt")
+                tokens = encoded["input_ids"].to(device)
+                mask = encoded["attention_mask"].to(device)
+                _, states = model.run_with_cache(tokens, attention_mask=mask,
+                                                 names_filter=HOOK)
+                activation = states[HOOK]
+                pooled = (activation * mask[:, :, None]).sum(1) / mask.sum(1, keepdim=True)
+                values.append(pooled.half().cpu())
+            sides.append(torch.cat(values))
+        CACHE.mkdir(exist_ok=True)
+        torch.save({"positive": sides[0], "negative": sides[1],
+                    "meta": {"dataset": "SetFit/sst5", "split": "train",
+                             "revision": SST5_REVISION, "labels": [[3, 4], [0, 1]],
+                             "pooling": "mean non-padding token activation", "hook": HOOK}}, cache)
+    return torch.load(cache, map_location=device, weights_only=False)
+
+
+@torch.no_grad()
 def diffmean_vector(concept, model, device):
     """Mean activation of the positive set minus the negative one, over all positions."""
+    if concept == "sentiment":
+        sides = sentiment_activations(model, device)
+        value = sides["positive"].float().mean(0) - sides["negative"].float().mean(0)
+        return value / value.norm()
     cache = CACHE / f"v_diffmean_{concept}_layer{LAYER}.pt"
     if not cache.exists():
         sides = []

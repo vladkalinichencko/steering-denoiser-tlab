@@ -93,6 +93,28 @@ def prepare_rectified_pairs(path: pathlib.Path, checkpoint: pathlib.Path,
                          "train": n_train, "val": n_val, "seed": seed}}, path)
 
 
+@torch.no_grad()
+def prepare_tangent_bases(path: pathlib.Path, data_path: pathlib.Path,
+                          n_train=2_000, n_val=256, bank_size=20_000,
+                          k=256, rank=16, batch=8) -> None:
+    data = torch.load(data_path, map_location="cpu", weights_only=False)
+    mean, std = data["train"].float().mean(0), data["train"].float().std(0).clamp_min(1e-6)
+    standardize = lambda values: (values.float() - mean) / std
+    bank = standardize(data["train"][:bank_size])
+    output = {}
+    for split, count in (("train", n_train), ("val", n_val)):
+        bases = []
+        points = standardize(data[split][:count])
+        for start in range(0, count, batch):
+            bases.append(methods.local_geometry(bank, points[start:start + batch], k, rank)[
+                "basis"].half())
+            print(f"tangent bases {split} {min(start + batch, count)}/{count}", flush=True)
+        output[split] = torch.cat(bases)
+    output["meta"] = {"data": str(data_path), "train": n_train, "val": n_val,
+                      "bank": bank_size, "k": k, "rank": rank}
+    torch.save(output, path)
+
+
 def schedule(step: int, total: int, warmup: int) -> float:
     if step < warmup:
         return (step + 1) / max(warmup, 1)
@@ -115,6 +137,8 @@ def train(config: dict) -> pathlib.Path:
                    if "teacher" in config else None)
     pairs = (torch.load(config["pairs"], map_location="cpu", weights_only=False)
              if "pairs" in config else None)
+    bases = (torch.load(config["bases"], map_location="cpu", weights_only=False)
+             if "bases" in config else None)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=config["lr"])
     warmup = max(1, round(config["steps"] * 0.01))
@@ -132,14 +156,15 @@ def train(config: dict) -> pathlib.Path:
     started = time.time()
 
     for step in range(config["steps"]):
-        source = pairs["train"][0] if pairs else train_data
+        source = pairs["train"][0] if pairs else (bases["train"] if bases else train_data)
         index = torch.randint(len(source), (config["batch"],))
         batch = (model.standardize(train_data[index].to(target_device))
                  if pairs is None else None)
         pair = (tuple(values[index].float().to(target_device) for values in pairs["train"])
                 if pairs else None)
+        basis = bases["train"][index].float().to(target_device) if bases else None
         value = methods.loss(config["method"], model, batch, sigma=config["sigma"],
-                             target_model=ema, teacher=teacher, pair=pair)
+                             target_model=ema, teacher=teacher, pair=pair, basis=basis)
         value.backward()
         grad = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
@@ -150,7 +175,8 @@ def train(config: dict) -> pathlib.Path:
 
         if step % config["log_every"] == 0 or step + 1 == config["steps"]:
             with torch.no_grad():
-                val = (model.standardize(val_data.to(target_device))
+                val_source = val_data[:len(bases["val"])] if bases else val_data
+                val = (model.standardize(val_source.to(target_device))
                        if pairs is None else None)
                 val_pair = (tuple(values.float().to(target_device) for values in pairs["val"])
                             if pairs else None)
@@ -158,6 +184,8 @@ def train(config: dict) -> pathlib.Path:
                 val_loss = methods.loss(config["method"], model, val, sigma=config["sigma"],
                                         target_model=ema, teacher=teacher,
                                         pair=val_pair,
+                                        basis=(bases["val"].float().to(target_device)
+                                               if bases else None),
                                         generator=fixed).item()
             row = {"step": step, "train_loss": value.item(), "val_loss": val_loss,
                    "lr": optimizer.param_groups[0]["lr"], "grad_norm": float(grad),

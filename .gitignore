@@ -16,6 +16,7 @@ datasets/*
 ext/*
 !datasets/.gitkeep
 !datasets/*.json
+!datasets/*.jsonl
 !ext/.gitkeep
 
 # тяжёлые веса; код, логи, tmp, HTML и рисунки остаются в git
