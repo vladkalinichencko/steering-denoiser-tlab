@@ -1,5 +1,6 @@
 """One response-only Mac evaluation and one report for every steering method."""
 
+import gc
 import json
 import math
 import pathlib
@@ -47,33 +48,31 @@ def load_state(target: torch.device):
     vector = steering.diffmean_vector("sentiment", source, target)
     vector = vector / vector.norm()
     bank = normalizer.standardize(data["train"][:20_000].float().to(target))
-    heldout_raw = data["val"][:8].float().to(target)
+    validation_raw = data["val"].float().to(target)
+    heldout_raw = validation_raw[:8]
     heldout = normalizer.standardize(heldout_raw)
-    reference = normalizer.standardize(data["val"].float().to(target))
+    reference = normalizer.standardize(validation_raw)
     centre = reference.mean(0)
     _, _, basis = torch.pca_lowrank(reference - centre, q=2)
     clean_geometry = methods.local_geometry(bank, heldout, K, RANK)
-    scale = heldout_raw.norm(dim=-1).mean()
+    scale = validation_raw.norm(dim=-1).mean()
     return data, normalizer, source, vector, bank, heldout_raw, heldout, centre, basis, \
         clean_geometry, scale
 
 
-def checkpoint_modes(target: torch.device, vector: torch.Tensor):
-    output = {}
-    for name, (path, start, steps) in CHECKPOINTS.items():
-        model, checkpoint = load_checkpoint(pathlib.Path(path), target)
+def checkpoint_mode(name: str, target: torch.device, vector: torch.Tensor):
+    path, start, steps = CHECKPOINTS[name]
+    model, checkpoint = load_checkpoint(pathlib.Path(path), target)
 
-        def apply(h, strength, generator, model=model, checkpoint=checkpoint,
-                  start=start, steps=steps):
-            edited = h + strength * vector
-            fixed, states = methods.repair(
-                checkpoint["config"]["method"], model, edited, t_start=start,
-                steps=steps, generator=generator)
-            return fixed, [h, edited] + [model.restore(state) for state in states]
+    def apply(h, strength, generator):
+        edited = h + strength * vector
+        fixed, states = methods.repair(
+            checkpoint["config"]["method"], model, edited, t_start=start,
+            steps=steps, generator=generator)
+        return fixed, [h, edited] + [model.restore(state) for state in states]
 
-        output[name] = {"apply": apply, "checkpoint": path,
-                        "parameters": checkpoint["config"]["parameters"]}
-    return output
+    return {"apply": apply, "checkpoint": path,
+            "parameters": checkpoint["config"]["parameters"]}
 
 
 def geometry_modes(normalizer, bank, vector):
@@ -218,6 +217,18 @@ def save(artifact):
         REPORT.replace("__DATA__", json.dumps(artifact).replace("</", "<\\/")))
 
 
+def training_histories():
+    output = {}
+    for name, (checkpoint, _, _) in CHECKPOINTS.items():
+        history = pathlib.Path(checkpoint).parent / "history.jsonl"
+        if history.as_posix() in (run["source"] for run in output.values()):
+            continue
+        rows = [json.loads(line) for line in history.read_text().splitlines()]
+        output[name] = {"key": "val_unweighted_mse" if name == "MeanFlow" else "val_loss",
+                        "rows": rows, "source": history.as_posix()}
+    return output
+
+
 def run(selected=None, ratios=RATIOS):
     target = device()
     state = load_state(target)
@@ -225,24 +236,37 @@ def run(selected=None, ratios=RATIOS):
         clean_geometry, scale = state
     capacity, _ = load_checkpoint(
         pathlib.Path("runs/mac_full_additive_capacity/best.pt"), target)
-    modes = checkpoint_modes(target, vector) | geometry_modes(normalizer, bank, vector)
-    modes["Safe capacity MSE"] = safe_mode(capacity, vector)
-    chosen = selected or tuple(modes)
-    artifact = {"contract": {"hook": steering.HOOK, "scope": "response tokens",
-                              "ratios": ratios, "prompts": PROMPTS, "seed": 0,
-                              "data": data["meta"], "bank": len(bank), "k": K,
-                              "rank": RANK, "projection": "fixed clean validation PCA"},
-                "background": ((heldout - centre) @ basis).cpu().tolist(),
-                "points": []}
+    geometry = geometry_modes(normalizer, bank, vector)
+    geometry["Safe capacity MSE"] = safe_mode(capacity, vector)
+    chosen = tuple(selected) if selected is not None else tuple(CHECKPOINTS) + tuple(geometry)
+    contract = {"hook": steering.HOOK, "scope": "response tokens",
+                "ratios": ratios, "prompts": PROMPTS, "seed": 0,
+                "data": data["meta"], "bank": len(bank), "k": K, "rank": RANK,
+                "alpha_scale": "mean norm over full denoiser validation split",
+                "projection": "fixed clean validation PCA"}
+    path = RUN / "screening.json"
+    previous = json.loads(path.read_text()) if path.exists() else None
+    contract = json.loads(json.dumps(contract))
+    artifact = (previous if previous and previous["contract"] == contract
+                else {"contract": contract,
+                      "background": ((heldout - centre) @ basis).cpu().tolist(),
+                      "points": []})
+    completed = {(point["method"], point["ratio"]) for point in artifact["points"]}
+    artifact["training"] = training_histories()
     save(artifact)
     print(RUN / "screening.html", flush=True)
     for name in chosen:
+        mode = checkpoint_mode(name, target, vector) if name in CHECKPOINTS else geometry[name]
         for ratio in ratios:
-            point = evaluate(name, modes[name], ratio, state, capacity)
+            if (name, ratio) in completed:
+                continue
+            point = evaluate(name, mode, ratio, state, capacity)
             artifact["points"].append(point)
             save(artifact)
             print(json.dumps({key: point[key] for key in
                               ("method", "ratio", "nll", "property", "latency_ms")}), flush=True)
+        del mode
+        gc.collect()
 
 
 REPORT = r'''<!doctype html><meta charset="utf-8"><title>Mac steering screening</title>
@@ -254,13 +278,15 @@ h1{font-size:16px;margin:0}select,input{font:inherit}.readout{margin-left:auto;f
 main{padding:18px;display:grid;grid-template-columns:minmax(560px,1.4fr) minmax(380px,1fr);gap:18px}.wide{grid-column:1/-1}
 section{border-top:1px solid var(--line);padding-top:10px}h2{font-size:14px;margin:0 0 8px}.plots{display:flex;flex-wrap:wrap;gap:12px}
 svg{width:100%;height:auto;background:#fafbfc}.small{width:320px}.large{min-height:430px}.axis{stroke:#aab1b8;stroke-width:1}.cloud{fill:#aab1b8;opacity:.28}.path{fill:none;stroke:var(--blue);stroke-width:1.5}.naive{stroke:var(--orange)}
-.caption{color:var(--mut);margin:5px 0}.sample{border-top:1px solid var(--line);padding:8px 0}.prompt{font-weight:600}.metric{font-variant-numeric:tabular-nums}
+.caption{color:var(--mut);margin:5px 0}.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:6px 0;color:var(--mut)}.swatch{display:inline-block;width:9px;height:9px;margin-right:4px}.sample{border-top:1px solid var(--line);padding:8px 0}.prompt{font-weight:600}.metric{font-variant-numeric:tabular-nums}
 @media(max-width:960px){main{grid-template-columns:1fr}.wide{grid-column:auto}}
 </style>
 <header><h1>Steering Mac screening</h1><label>method <select id="method"></select></label><label>alpha <input id="ratio" type="range" min="0" max="0" step="1"></label><span class="readout" id="readout"></span></header>
-<main><section class="wide"><h2>Pareto: clean-model perplexity and positive sentiment</h2><svg id="pareto" viewBox="0 0 1080 360"></svg></section>
+<main><section class="wide"><h2>Pareto: clean-model NLL and positive sentiment</h2><div class="legend" id="legend"></div><svg id="pareto" viewBox="0 0 1080 360"></svg></section>
+<section class="wide"><h2>Quality, property and diversity over alpha</h2><div class="plots" id="quality"></div></section>
 <section><h2>Fixed clean-validation coordinates</h2><svg class="large" id="trajectory" viewBox="0 0 620 430"></svg><p class="caption">Grey is the same held-out reference cloud for every method. Orange is clean to naive. Blue is the selected method path.</p></section>
 <section><h2>Full-dimensional geometry</h2><div class="plots" id="geometry"></div></section>
+<section class="wide"><h2>Training dynamics</h2><div class="plots" id="training"></div></section>
 <section class="wide"><h2>Decoded continuations</h2><div id="samples"></div></section></main>
 <script>
 const data=__DATA__, points=data.points, methods=[...new Set(points.map(x=>x.method))];
@@ -268,12 +294,12 @@ const colors=["#2563eb","#d97706","#059669","#7c3aed","#dc2626","#0891b2","#4f46
 const color=Object.fromEntries(methods.map((x,i)=>[x,colors[i%colors.length]]));
 const S="http://www.w3.org/2000/svg"; function node(tag,a={},text=""){const n=document.createElementNS(S,tag);for(const k in a)n.setAttribute(k,a[k]);if(text)n.textContent=text;return n}
 function bounds(values){let lo=Math.min(...values),hi=Math.max(...values);if(lo===hi){lo-=.5;hi+=.5}const p=(hi-lo)*.08;return[lo-p,hi+p]}
-function chart(svg,series,xkey,ykey){svg.replaceChildren();const all=series.flatMap(s=>s.rows);if(!all.length)return;const xb=bounds(all.map(x=>x[xkey])),yb=bounds(all.map(x=>x[ykey]));const W=+svg.viewBox.baseVal.width,H=+svg.viewBox.baseVal.height,p=42,X=x=>p+(x-xb[0])/(xb[1]-xb[0])*(W-p-12),Y=y=>H-p-(y-yb[0])/(yb[1]-yb[0])*(H-p-12);svg.append(node("line",{x1:p,y1:8,x2:p,y2:H-p,class:"axis"}),node("line",{x1:p,y1:H-p,x2:W-8,y2:H-p,class:"axis"}));for(const s of series){const rows=s.rows.slice().sort((a,b)=>a.ratio-b.ratio);svg.append(node("path",{d:rows.map((r,i)=>(i?"L":"M")+X(r[xkey])+","+Y(r[ykey])).join(" "),fill:"none",stroke:s.color,"stroke-width":"1.5"}));for(const r of rows){const c=node("circle",{cx:X(r[xkey]),cy:Y(r[ykey]),r:3,fill:s.color});c.append(node("title",{},`${r.method||"spectrum"} r=${r.ratio}: ${ykey}=${r[ykey].toFixed(3)}`));svg.append(c)}}}
-function metric(name,key,rows){const box=document.createElement("div"),title=document.createElement("div"),svg=node("svg",{viewBox:"0 0 320 190",class:"small"});title.textContent=name;box.append(title,svg);chart(svg,[{rows,color:"#2563eb"}],"ratio",key);return box}
-function project(svg,background,path,naive){svg.replaceChildren();const all=background.concat(path,naive),xb=bounds(all.map(x=>x[0])),yb=bounds(all.map(x=>x[1])),X=x=>24+(x-xb[0])/(xb[1]-xb[0])*572,Y=y=>406-(y-yb[0])/(yb[1]-yb[0])*382;for(const p of background)svg.append(node("circle",{cx:X(p[0]),cy:Y(p[1]),r:1.5,class:"cloud"}));for(const [values,cls] of [[naive,"path naive"],[path,"path"]]){svg.append(node("polyline",{points:values.map(p=>X(p[0])+","+Y(p[1])).join(" "),class:cls}));values.forEach((p,i)=>svg.append(node("circle",{cx:X(p[0]),cy:Y(p[1]),r:3,fill:cls.includes("naive")?"#d97706":"#2563eb"})))}}
+function chart(svg,series,xkey,ykey){svg.replaceChildren();const all=series.flatMap(s=>s.rows);if(!all.length)return;const xb=bounds(all.map(x=>x[xkey])),yb=bounds(all.map(x=>x[ykey]));const W=+svg.viewBox.baseVal.width,H=+svg.viewBox.baseVal.height,p=42,X=x=>p+(x-xb[0])/(xb[1]-xb[0])*(W-p-12),Y=y=>H-p-(y-yb[0])/(yb[1]-yb[0])*(H-p-12);svg.append(node("line",{x1:p,y1:8,x2:p,y2:H-p,class:"axis"}),node("line",{x1:p,y1:H-p,x2:W-8,y2:H-p,class:"axis"}),node("text",{x:p,y:H-8,fill:"#687078","font-size":10},xb[0].toPrecision(3)),node("text",{x:W-10,y:H-8,fill:"#687078","font-size":10,"text-anchor":"end"},xb[1].toPrecision(3)),node("text",{x:p-5,y:14,fill:"#687078","font-size":10,"text-anchor":"end"},yb[1].toPrecision(3)),node("text",{x:p-5,y:H-p,fill:"#687078","font-size":10,"text-anchor":"end"},yb[0].toPrecision(3)));for(const s of series){const rows=s.rows.slice().sort((a,b)=>a.ratio-b.ratio);svg.append(node("path",{d:rows.map((r,i)=>(i?"L":"M")+X(r[xkey])+","+Y(r[ykey])).join(" "),fill:"none",stroke:s.color,"stroke-width":"1.5"}));for(const r of rows){const c=node("circle",{cx:X(r[xkey]),cy:Y(r[ykey]),r:3,fill:s.color});c.append(node("title",{},`${r.method||"spectrum"} r=${r.ratio}: ${xkey}=${r[xkey].toFixed(3)}, ${ykey}=${r[ykey].toFixed(3)}`));svg.append(c)}}}
+function metric(name,key,rows,xkey="ratio"){const box=document.createElement("div"),title=document.createElement("div"),svg=node("svg",{viewBox:"0 0 320 190",class:"small"});title.textContent=name;box.append(title,svg);chart(svg,[{rows,color:"#2563eb"}],xkey,key);return box}
+function project(svg,background,path,naive){svg.replaceChildren();const all=background.concat(path,naive),xb=bounds(all.map(x=>x[0])),yb=bounds(all.map(x=>x[1])),X=x=>42+(x-xb[0])/(xb[1]-xb[0])*560,Y=y=>394-(y-yb[0])/(yb[1]-yb[0])*370;svg.append(node("line",{x1:42,y1:14,x2:42,y2:394,class:"axis"}),node("line",{x1:42,y1:394,x2:608,y2:394,class:"axis"}),node("text",{x:608,y:416,fill:"#687078","font-size":11,"text-anchor":"end"},"PC1"),node("text",{x:8,y:16,fill:"#687078","font-size":11},"PC2"));for(const p of background)svg.append(node("circle",{cx:X(p[0]),cy:Y(p[1]),r:1.5,class:"cloud"}));for(const [values,cls] of [[naive,"path naive"],[path,"path"]]){svg.append(node("polyline",{points:values.map(p=>X(p[0])+","+Y(p[1])).join(" "),class:cls}));values.forEach((p,i)=>svg.append(node("circle",{cx:X(p[0]),cy:Y(p[1]),r:3,fill:cls.includes("naive")?"#d97706":"#2563eb"})))}}
 const method=document.querySelector("#method"),slider=document.querySelector("#ratio");methods.forEach(x=>method.append(new Option(x,x)));
-function render(){const rows=points.filter(x=>x.method===method.value).sort((a,b)=>a.ratio-b.ratio);slider.max=Math.max(0,rows.length-1);const row=rows[+slider.value]||rows[0];if(!row)return;const naive=points.find(x=>x.method==="Naive"&&x.ratio===row.ratio);document.querySelector("#readout").textContent=`r ${row.ratio.toFixed(1)}  NLL ${row.nll.toFixed(3)}  property ${row.property.toFixed(3)}`;project(document.querySelector("#trajectory"),data.background,row.trajectory,naive?naive.trajectory:row.trajectory);const g=document.querySelector("#geometry");g.replaceChildren();const flat=rows.map(x=>Object.assign({ratio:x.ratio},x.geometry));[["kNN distance","knn_distance"],["local PCA residual","local_pca_residual"],["capacity-MSE energy","denoiser_energy"],["tangent displacement","tangent_displacement"],["normal displacement","normal_displacement"],["latency ms","latency_ms"]].forEach(([n,k])=>g.append(metric(n,k,k==="latency_ms"?rows:flat)));g.append(metric("singular spectrum","value",row.geometry.spectrum.map((value,ratio)=>({ratio,value}))));const samples=document.querySelector("#samples");samples.replaceChildren();row.texts.forEach((text,i)=>{const d=document.createElement("div");d.className="sample";d.innerHTML=`<div class="prompt"></div><div></div>`;d.children[0].textContent=data.contract.prompts[i];d.children[1].textContent=text;samples.append(d)})}
-method.onchange=()=>{slider.value=0;render()};slider.oninput=render;chart(document.querySelector("#pareto"),methods.map(x=>({rows:points.filter(p=>p.method===x),color:color[x]})),"ppl","property");render();
+function render(){const rows=points.filter(x=>x.method===method.value).sort((a,b)=>a.ratio-b.ratio);slider.max=Math.max(0,rows.length-1);const row=rows[+slider.value]||rows[0];if(!row)return;const naive=points.find(x=>x.method==="Naive"&&x.ratio===row.ratio);document.querySelector("#readout").textContent=`r ${row.ratio.toFixed(1)}  NLL ${row.nll.toFixed(3)}  property ${row.property.toFixed(3)}  kNN ${row.geometry.knn_distance.toFixed(2)}  residual ${row.geometry.local_pca_residual.toFixed(2)}`;project(document.querySelector("#trajectory"),data.background,row.trajectory,naive?naive.trajectory:row.trajectory);const q=document.querySelector("#quality");q.replaceChildren();[["NLL","nll"],["positive probability","property"],["dist-1","dist1"],["dist-2","dist2"],["dist-3","dist3"]].forEach(([n,k])=>q.append(metric(n,k,rows)));const g=document.querySelector("#geometry");g.replaceChildren();const flat=rows.map(x=>Object.assign({ratio:x.ratio},x.geometry));[["kNN distance","knn_distance"],["local PCA residual","local_pca_residual"],["capacity-MSE energy","denoiser_energy"],["tangent displacement","tangent_displacement"],["normal displacement","normal_displacement"],["latency ms","latency_ms"]].forEach(([n,k])=>g.append(metric(n,k,k==="latency_ms"?rows:flat)));g.append(metric("singular spectrum","value",row.geometry.spectrum.map((value,ratio)=>({ratio,value}))));const samples=document.querySelector("#samples");samples.replaceChildren();row.texts.forEach((text,i)=>{const d=document.createElement("div");d.className="sample";d.innerHTML=`<div class="prompt"></div><div></div>`;d.children[0].textContent=data.contract.prompts[i];d.children[1].textContent=text;samples.append(d)})}
+method.onchange=()=>{slider.value=0;render()};slider.oninput=render;const legend=document.querySelector("#legend");methods.forEach(name=>{const item=document.createElement("span");item.innerHTML=`<i class="swatch"></i>${name}`;item.firstChild.style.background=color[name];legend.append(item)});chart(document.querySelector("#pareto"),methods.map(x=>({rows:points.filter(p=>p.method===x),color:color[x]})),"nll","property");const training=document.querySelector("#training");for(const [name,run] of Object.entries(data.training))training.append(metric(name,run.key,run.rows,"step"));render();
 </script>'''
 
 
