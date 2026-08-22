@@ -122,6 +122,8 @@ LLM Activations* (GLP). <https://generative-latent-prior.github.io/>
 | порядок | validation direction и naive steering; MSE и GLP; ускорения; geometry; conditional methods; общий Pareto |
 | локальный запуск | MPS, тот же код и настоящая архитектура, подмножество train documents, максимум 30 минут; сравниваем сходимость, устойчивость и реальные траектории, но не финальное качество метода |
 | полный запуск | A100, полный train split; screening одним seed, финал тремя seeds |
+| общий Mac-report | один зафиксированный PCA basis, fit на clean FineWeb validation activations; все методы, alpha и trajectories преобразуются только через него |
+| geometry screen | 20k natural non-BOS activations; для каждой точки 256 соседей и local SVD rank 16; показываются весь singular spectrum, kNN distance, local-PCA residual, tangent/normal displacement и correction energy capacity-MSE |
 
 ## Общая архитектура денойзеров
 
@@ -172,11 +174,11 @@ $$g'=(1+\gamma)\odot g+\beta.$$
 
 ![Единая геометрическая карта методов](assets/steering-geometry-concept.png)
 
-Картинка объясняет координаты, но не является результатом. Каждый `runs/<experiment>/diagnostics.html` строится по реальным held-out активациям и показывает:
+Картинка объясняет координаты, но не является результатом. `runs/mac_screening.html` строится по реальным held-out активациям и объединяет:
 
 - clean, steered и repaired activation, direction и correction;
 - denoiser input, output, residual и промежуточные flow states;
-- одну held-out проекцию для всех methods и checkpoints, рядом с full-dimensional distances;
+- одну сохранённую held-out проекцию для всех methods и checkpoints, рядом с full-dimensional distances;
 - train/validation loss, learning rate, gradient norm и checkpoint progression;
 - local neighbours, tangent/normal split и singular spectrum только в geometry experiments;
 - Jacobian spectrum только при проверке local contraction или amplification;
@@ -184,3 +186,11 @@ $$g'=(1+\gamma)\odot g+\beta.$$
 - downstream drift, logits и decoded generations на фиксированных prompts;
 - causal alpha sweep с naive, repair и отключением отдельных correction components;
 - Pareto, latency, memory и разобранные failure cases со ссылками на JSON, log и checkpoint.
+
+Проверяемые geometry-гипотезы:
+
+- random noise должен сначала увеличивать kNN distance, local-PCA residual и correction energy, а затем NLL; отсутствие такого порядка опровергает эти величины как раннюю диагностику;
+- tangent/normal split должен отделить property effect от quality damage; если Pareto full, tangent и normal совпадает, локальная линейная геометрия здесь ничего не объясняет;
+- nearest, Segment-kNN и local geodesic должны уменьшать full-dimensional geometry deviations при сохранении property; уменьшение только проекции PCA не считается;
+- safe correction должен сохранять steering coordinate лучше обычного repair при сопоставимой geometry; рост property ценой прежнего NLL не считается улучшением;
+- Curveball, UniSteer и INNSteer проверяются в собственных координатах, но сравниваются только по общим decoded Pareto и geometry axes.
