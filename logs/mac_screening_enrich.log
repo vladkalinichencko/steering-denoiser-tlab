@@ -1,0 +1,4 @@
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 7243.54it/s]
+Loaded pretrained model gpt2 into HookedTransformer
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 6771.94it/s]
+Loaded pretrained model gpt2 into HookedTransformer

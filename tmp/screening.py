@@ -28,12 +28,18 @@ CHECKPOINTS = {
     "Additive MSE capacity": ("runs/mac_full_additive_capacity/best.pt", 0.5, 1),
     "Interpolation MSE": ("runs/mac_full_interpolation/best.pt", 0.5, 1),
     "GLP 20 steps": ("runs/mac_full_glp/best.pt", 0.2, 20),
+    "GLP 20 steps t=0.35": ("runs/mac_full_glp/best.pt", 0.35, 20),
+    "GLP 20 steps t=0.5": ("runs/mac_full_glp/best.pt", 0.5, 20),
     "GLP one Euler": ("runs/mac_full_glp/best.pt", 0.2, 1),
     "Consistency": ("runs/mac_reduced_consistency/best.pt", 0.2, 1),
+    "Consistency t=0.35": ("runs/mac_reduced_consistency/best.pt", 0.35, 1),
+    "Consistency t=0.5": ("runs/mac_reduced_consistency/best.pt", 0.5, 1),
     "Rectified 1 step": ("runs/mac_reduced_rectified/best.pt", 0.2, 1),
     "Rectified 2 steps": ("runs/mac_reduced_rectified/best.pt", 0.2, 2),
     "Rectified 4 steps": ("runs/mac_reduced_rectified/best.pt", 0.2, 4),
     "MeanFlow": ("runs/mac_reduced_meanflow/best.pt", 0.2, 1),
+    "MeanFlow t=0.35": ("runs/mac_reduced_meanflow/best.pt", 0.35, 1),
+    "MeanFlow t=0.5": ("runs/mac_reduced_meanflow/best.pt", 0.5, 1),
     "Tangent-preserving MSE": ("runs/mac_reduced_tangent_mse/best.pt", 0.5, 1),
 }
 
