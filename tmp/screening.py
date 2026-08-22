@@ -311,12 +311,10 @@ def generate_many(model, prompts, apply, strength, target, seed):
             sequence = torch.cat([tokens for _, tokens in current])
             torch.manual_seed(seed)
             intervention = hook(apply, strength, target, seed + length + start)
-            for _ in range(20):
-                with model.hooks(fwd_hooks=[(steering.HOOK, intervention)]):
-                    logits = model(sequence)[:, -1]
-                top = logits.topk(50)
-                choice = torch.multinomial(top.values.softmax(-1), 1)
-                sequence = torch.cat((sequence, top.indices.gather(1, choice)), dim=1)
+            with model.hooks(fwd_hooks=[(steering.HOOK, intervention)]):
+                sequence = model.generate(sequence, max_new_tokens=20, do_sample=True,
+                                          temperature=1.0, top_k=50, verbose=False,
+                                          use_past_kv_cache=True)
             for row, (index, _) in zip(sequence, current):
                 output[index] = model.to_string(row[length:])
     return output
