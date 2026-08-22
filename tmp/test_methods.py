@@ -62,6 +62,24 @@ class MethodTests(unittest.TestCase):
                 self.assertEqual(repaired.shape, self.z.shape)
                 self.assertGreaterEqual(len(path), 2)
 
+    def test_local_geometry_reconstructs_tangent_points(self):
+        bank = torch.randn(40, 8)
+        geometry = methods.local_geometry(bank, self.z[:2], k=16, rank=4)
+        tangent, normal = methods.split_local(self.z[:2], geometry["basis"])
+        self.assertEqual(geometry["spectrum"].shape, (2, 8))
+        self.assertTrue(torch.allclose(tangent + normal, self.z[:2], atol=1e-6))
+
+    def test_geometry_repairs_return_bank_or_path(self):
+        bank = torch.randn(40, 8)
+        nearest = methods.nearest(bank, self.z[:2])
+        segment = methods.segment_nearest(bank, self.z[:2], self.z[:2] + 0.5)
+        geodesic, path = methods.local_geodesic(
+            bank, self.z[:2], torch.ones(8), 0.5, steps=2, k=16, rank=4)
+        self.assertEqual(nearest.shape, self.z[:2].shape)
+        self.assertEqual(segment.shape, self.z[:2].shape)
+        self.assertEqual(geodesic.shape, self.z[:2].shape)
+        self.assertEqual(len(path), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

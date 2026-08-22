@@ -212,3 +212,61 @@ def repair(method: str, model: ActivationModel, h: torch.Tensor, *, t_start=0.5,
     else:
         states = integrate(model, zt, t_start, steps)
     return model.restore(states[-1]), states
+
+
+@torch.no_grad()
+def local_geometry(bank: torch.Tensor, points: torch.Tensor, k=256, rank=16):
+    distance, index = torch.cdist(points, bank).topk(k, largest=False)
+    neighbours = bank[index]
+    centre = neighbours.mean(1)
+    _, spectrum, axes = torch.linalg.svd(neighbours - centre[:, None], full_matrices=False)
+    basis = axes[:, :rank].transpose(1, 2)
+    residual = points - centre - torch.bmm(
+        basis, torch.bmm(basis.transpose(1, 2), (points - centre)[:, :, None])).squeeze(-1)
+    return {"distance": distance[:, 0], "residual": residual.norm(dim=-1),
+            "basis": basis, "spectrum": spectrum}
+
+
+@torch.no_grad()
+def split_local(displacement: torch.Tensor, basis: torch.Tensor):
+    tangent = torch.bmm(
+        basis, torch.bmm(basis.transpose(1, 2), displacement[:, :, None])).squeeze(-1)
+    return tangent, displacement - tangent
+
+
+@torch.no_grad()
+def nearest(bank: torch.Tensor, points: torch.Tensor):
+    index = torch.cdist(points, bank).argmin(1)
+    return bank[index]
+
+
+@torch.no_grad()
+def segment_nearest(bank: torch.Tensor, start: torch.Tensor, end: torch.Tensor):
+    output = []
+    for first, last in zip(start, end):
+        displacement = last - first
+        length = displacement.norm()
+        if length <= 1e-9:
+            output.append(nearest(bank, first[None])[0])
+            continue
+        unit = displacement / length
+        offset = bank - first
+        along = offset @ unit
+        perpendicular = (offset.square().sum(-1) - along.square()).clamp_min(0)
+        perpendicular[(along < 0) | (along > length)] = torch.inf
+        output.append(bank[perpendicular.argmin()])
+    return torch.stack(output)
+
+
+@torch.no_grad()
+def local_geodesic(bank: torch.Tensor, start: torch.Tensor, direction: torch.Tensor,
+                   distance: float, steps=8, k=256, rank=16):
+    state = start
+    path = [state]
+    for _ in range(steps):
+        basis = local_geometry(bank, state, k, rank)["basis"]
+        tangent, _ = split_local(direction.expand_as(state), basis)
+        tangent = tangent / tangent.norm(dim=-1, keepdim=True).clamp_min(1e-9)
+        state = state + distance / steps * tangent
+        path.append(state)
+    return state, path

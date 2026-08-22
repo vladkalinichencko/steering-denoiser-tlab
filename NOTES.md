@@ -124,6 +124,7 @@ LLM Activations* (GLP). <https://generative-latent-prior.github.io/>
 | полный запуск | A100, полный train split; screening одним seed, финал тремя seeds |
 | общий Mac-report | один зафиксированный PCA basis, fit на clean FineWeb validation activations; все методы, alpha и trajectories преобразуются только через него |
 | geometry screen | 20k natural non-BOS activations; для каждой точки 256 соседей и local SVD rank 16; показываются весь singular spectrum, kNN distance, local-PCA residual, tangent/normal displacement и correction energy capacity-MSE |
+| noise tolerance | isotropic Gaussian масштабируется так, чтобы ожидаемая норма perturbation была (r\,\overline{\lVert h\rVert_2}); используется тот же (r\)-grid и seed 0 |
 
 ## Общая архитектура денойзеров
 
