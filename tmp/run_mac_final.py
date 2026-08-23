@@ -40,7 +40,7 @@ def main() -> None:
     for name, method in METHODS:
         for seed in SEEDS:
             path = checkpoint(method, seed)
-            if not path.exists():
+            if not path.with_name("final.pt").exists():
                 print(f"TRAIN {name} seed={seed} remaining={LIMIT_SECONDS-time.monotonic()+started:.0f}s",
                       flush=True)
                 train(config(method, seed))
