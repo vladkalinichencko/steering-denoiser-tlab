@@ -490,10 +490,17 @@ def run(selected=None, ratios=RATIOS):
     path = RUN / "screening.json"
     previous = json.loads(path.read_text()) if path.exists() else None
     contract = json.loads(json.dumps(contract))
-    artifact = (previous if previous and previous["contract"] == contract
-                else {"contract": contract,
-                      "background": ((heldout - centre) @ basis).cpu().tolist(),
-                      "points": []})
+    compatible = False
+    if previous:
+        old = json.loads(json.dumps(previous["contract"]))
+        old["provenance"].pop("git_revision", None)
+        current = json.loads(json.dumps(contract))
+        current["provenance"].pop("git_revision", None)
+        compatible = old == current
+    artifact = (previous if compatible else
+                {"background": ((heldout - centre) @ basis).cpu().tolist(),
+                 "points": []})
+    artifact["contract"] = contract
     completed = {(point["method"], point["ratio"]) for point in artifact["points"]}
     artifact["training"] = training_histories()
     save(artifact)
