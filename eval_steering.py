@@ -21,6 +21,7 @@ import mlflow
 import torch
 
 import denoiser
+import repairs
 import steering
 
 
@@ -34,25 +35,9 @@ def load(path, device):
 
 
 def methods(args, nets, bank, v, alpha):
-    """-> [(подпись, функция починки)]. У GLP t_start — главный рычаг: он решает,
-    сколько от правки остаётся и сколько чинится, поэтому это отдельные точки."""
-    out = []
-    for kind in args.repair:
-        if kind == "none":
-            out.append(("none", None))
-        elif kind == "mse":
-            out.append((kind, lambda h: nets["mse"].repair(h)))
-        elif kind == "knn":
-            out.append(("knn", steering.segment_repair(bank, v, alpha) if alpha else None))
-        elif kind == "glp1":
-            for t in args.t_start:
-                out.append((f"glp1_t{t:g}",
-                            lambda h, t=t: denoiser.sdedit_onestep(nets["glp"], h, t)))
-        else:
-            for t in args.t_start:
-                out.append((f"glp_t{t:g}",
-                            lambda h, t=t: denoiser.sdedit(nets["glp"], h, t, args.steps)))
-    return out
+    """-> [(подпись, функция починки)]."""
+    return [point for kind in args.repair
+            for point in repairs.BUILDERS[kind](args, nets, bank, v, alpha)]
 
 
 def main():
