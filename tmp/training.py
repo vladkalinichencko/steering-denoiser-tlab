@@ -197,8 +197,9 @@ def train(config: dict) -> pathlib.Path:
             history.write(json.dumps(row) + "\n")
             history.flush()
             print(json.dumps(row), flush=True)
-            if val_loss < best:
-                best = val_loss
+            selection_loss = row.get("val_unweighted_mse", val_loss)
+            if selection_loss < best:
+                best = selection_loss
                 save_checkpoint(output / "best.pt", model, ema, effective, step, best)
 
     history.close()
