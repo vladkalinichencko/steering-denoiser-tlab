@@ -1,10 +1,12 @@
 """One response-only Mac evaluation and one report for every steering method."""
 
 import gc
+import hashlib
 import json
 import math
 import pathlib
 import pickle
+import subprocess
 import time
 
 import torch
@@ -42,6 +44,14 @@ CHECKPOINTS = {
     "MeanFlow t=0.5": ("runs/mac_reduced_meanflow/best.pt", 0.5, 1),
     "Tangent-preserving MSE": ("runs/mac_reduced_tangent_mse/best.pt", 0.5, 1),
 }
+
+
+def digest(path):
+    value = hashlib.sha256()
+    with pathlib.Path(path).open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            value.update(chunk)
+    return value.hexdigest()
 
 
 def synchronize(target: torch.device) -> None:
@@ -460,12 +470,23 @@ def run(selected=None, ratios=RATIOS):
     if unisteer.exists():
         geometry["Conditional field / UniSteer"] = unisteer_mode(unisteer, target)
     chosen = tuple(selected) if selected is not None else tuple(CHECKPOINTS) + tuple(geometry)
+    checkpoint_paths = {CHECKPOINTS[name][0] for name in chosen if name in CHECKPOINTS}
+    checkpoint_paths.add("runs/mac_full_additive_capacity/best.pt")
+    checkpoint_paths.update(mode["checkpoint"] for name, mode in geometry.items()
+                            if name in chosen and mode["checkpoint"])
     contract = {"hook": steering.HOOK, "scope": "response tokens",
                 "ratios": ratios, "prompts": PROMPTS, "seeds": SEEDS,
                 "direction": f"SetFit/sst5 train@{steering.SST5_REVISION}; labels 3/4 minus 0/1",
                 "data": data["meta"], "bank": len(bank), "k": K, "rank": RANK,
                 "alpha_scale": "mean norm over full denoiser validation split",
-                "projection": "fixed clean validation PCA"}
+                "projection": "fixed clean validation PCA",
+                "provenance": {
+                    "git_revision": subprocess.check_output(
+                        ("git", "rev-parse", "HEAD"), text=True).strip(),
+                    "sources": {path: digest(path) for path in
+                                ("steering.py", "tmp/methods.py", "tmp/nonlinear.py",
+                                 "tmp/screening.py")},
+                    "checkpoints": {path: digest(path) for path in sorted(checkpoint_paths)}}}
     path = RUN / "screening.json"
     previous = json.loads(path.read_text()) if path.exists() else None
     contract = json.loads(json.dumps(contract))
