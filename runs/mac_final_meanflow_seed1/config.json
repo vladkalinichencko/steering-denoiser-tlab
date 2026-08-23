@@ -1,0 +1,35 @@
+{
+  "tag": "mac_final_meanflow_seed1",
+  "method": "meanflow",
+  "data": "datasets/fineweb_layer6_mac_full.pt",
+  "steps": 2000,
+  "batch": 64,
+  "lr": 5e-05,
+  "sigma": 1.0,
+  "seed": 1,
+  "log_every": 200,
+  "reduced": false,
+  "device": "mps",
+  "dtype": "float32",
+  "parameters": 84960000,
+  "data_meta": {
+    "dataset": "HuggingFaceFW/fineweb",
+    "subset": "sample-10BT",
+    "revision": "9bb295d",
+    "split": "sha256[0] < 5",
+    "documents": {
+      "train": 812,
+      "val": 17
+    },
+    "hook": "blocks.6.hook_resid_post",
+    "bos": "excluded"
+  },
+  "model": {
+    "d_act": 768,
+    "width": 1536,
+    "hidden": 3072,
+    "blocks": 4,
+    "time_inputs": 2,
+    "simple": false
+  }
+}
