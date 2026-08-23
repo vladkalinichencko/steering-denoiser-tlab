@@ -1,0 +1,92 @@
+/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/transformer_lens/config/hooked_transformer_config.py:383: UserWarning: MPS backend may produce silently incorrect results (PyTorch 2.13.0). Set TRANSFORMERLENS_ALLOW_MPS=1 to suppress this warning. See: https://github.com/TransformerLensOrg/TransformerLens/issues/1178
+  warn_if_mps(self.device)
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 4851.18it/s]
+/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/torch/_lowrank.py:173: UserWarning: The operator 'aten::linalg_svd' is not currently supported on the MPS backend and will fall back to run on the CPU. This may have performance implications. (Triggered internally at /Users/runner/work/pytorch/pytorch/aten/src/ATen/mps/MPSFallback.mm:34.)
+  U, S, Vh = torch.linalg.svd(B, full_matrices=False)
+Loaded pretrained model gpt2 into HookedTransformer
+runs/mac_geometry_diagnostic/screening.html
+Loading weights:   0%|          | 0/104 [00:00<?, ?it/s]Loading weights: 100%|██████████| 104/104 [00:00<00:00, 5625.29it/s]
+{"method": "Naive", "ratio": 0.0, "nll": 2.6842397153377533, "property": 0.45138075575232506, "latency_ms": 0.36351561720948666}
+{"method": "Naive", "ratio": 0.4, "nll": 3.9844530820846558, "property": 0.998238131403923, "latency_ms": 0.02898438833653927}
+{"method": "Naive", "ratio": 0.8, "nll": 4.974594414234161, "property": 0.9994427114725113, "latency_ms": 0.034442622563801706}
+{"method": "Isotropic noise", "ratio": 0.0, "nll": 2.6842397153377533, "property": 0.45138075575232506, "latency_ms": 0.0542968773515895}
+{"method": "Isotropic noise", "ratio": 0.4, "nll": 2.9845767468214035, "property": 0.5622610077261925, "latency_ms": 0.045473992940969765}
+{"method": "Isotropic noise", "ratio": 0.8, "nll": 3.6505068987607956, "property": 0.4594120495021343, "latency_ms": 0.13881249469704926}
+{"method": "Curveball", "ratio": 0.0, "nll": 2.6842397153377533, "property": 0.45138075575232506, "latency_ms": 0.0954269926296547}
+{"method": "Curveball", "ratio": 0.4, "nll": 2.923443540930748, "property": 0.593236930668354, "latency_ms": 5.91638550395146}
+{"method": "Curveball", "ratio": 0.8, "nll": 3.503475934267044, "property": 0.6084043085575104, "latency_ms": 5.633192748064175}
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/tmp/run_mac_geometry_diagnostic.py", line 23, in <module>
+    main()
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/tmp/run_mac_geometry_diagnostic.py", line 19, in main
+    screening.run(METHODS, (0.0, 0.4, 0.8))
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/tmp/screening.py", line 485, in run
+    point = evaluate(name, mode, ratio, state, capacity)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/tmp/screening.py", line 410, in evaluate
+    "jacobian_spectrum": mode["jacobian"](heldout_raw[:1], strength)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/tmp/screening.py", line 236, in jacobian
+    return torch.linalg.svdvals(matrix).detach().cpu().tolist()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError: The operator 'aten::_linalg_svd.U' is not currently implemented for the MPS device. If you want this op to be considered for addition please comment on https://github.com/pytorch/pytorch/issues/141287 and mention use-case, that resulted in missing op as well as commit hash cf30153c4c131c8164ee7798e5022d810682e2cb. As a temporary fix, you can set the environment variable `PYTORCH_ENABLE_MPS_FALLBACK=1` to use the CPU as a fallback for this op. WARNING: this will be slower than running natively on MPS.
+/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/transformer_lens/config/hooked_transformer_config.py:383: UserWarning: MPS backend may produce silently incorrect results (PyTorch 2.13.0). Set TRANSFORMERLENS_ALLOW_MPS=1 to suppress this warning. See: https://github.com/TransformerLensOrg/TransformerLens/issues/1178
+  warn_if_mps(self.device)
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 7121.88it/s]
+/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/torch/_lowrank.py:173: UserWarning: The operator 'aten::linalg_svd' is not currently supported on the MPS backend and will fall back to run on the CPU. This may have performance implications. (Triggered internally at /Users/runner/work/pytorch/pytorch/aten/src/ATen/mps/MPSFallback.mm:34.)
+  U, S, Vh = torch.linalg.svd(B, full_matrices=False)
+Loaded pretrained model gpt2 into HookedTransformer
+runs/mac_geometry_diagnostic/screening.html
+Loading weights:   0%|          | 0/104 [00:00<?, ?it/s]Loading weights: 100%|██████████| 104/104 [00:00<00:00, 7166.10it/s]
+{"method": "INNSteer", "ratio": 0.0, "nll": 2.6842397153377533, "property": 0.45138075575232506, "latency_ms": 0.037166624679230154}
+{"method": "INNSteer", "ratio": 0.4, "nll": 3.055829718708992, "property": 0.3794749416410923, "latency_ms": 47.72021362441592}
+{"method": "INNSteer", "ratio": 0.8, "nll": 3.559774234890938, "property": 0.3865435868501663, "latency_ms": 5.104255251353607}
+{"method": "Conditional field / UniSteer", "ratio": 0.0, "nll": 2.6842397153377533, "property": 0.45138075575232506, "latency_ms": 27.925890623009764}
+{"method": "Conditional field / UniSteer", "ratio": 0.4, "nll": 2.710614785552025, "property": 0.46626443043351173, "latency_ms": 66.21744262520224}
+{"method": "Conditional field / UniSteer", "ratio": 0.8, "nll": 2.710614785552025, "property": 0.46626443043351173, "latency_ms": 36.17777599720284}
+/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/transformer_lens/config/hooked_transformer_config.py:383: UserWarning: MPS backend may produce silently incorrect results (PyTorch 2.13.0). Set TRANSFORMERLENS_ALLOW_MPS=1 to suppress this warning. See: https://github.com/TransformerLensOrg/TransformerLens/issues/1178
+  warn_if_mps(self.device)
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 7157.43it/s]
+/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/torch/_lowrank.py:173: UserWarning: The operator 'aten::linalg_svd' is not currently supported on the MPS backend and will fall back to run on the CPU. This may have performance implications. (Triggered internally at /Users/runner/work/pytorch/pytorch/aten/src/ATen/mps/MPSFallback.mm:34.)
+  U, S, Vh = torch.linalg.svd(B, full_matrices=False)
+Loaded pretrained model gpt2 into HookedTransformer
+runs/mac_geometry_diagnostic/screening.html
+Loading weights:   0%|          | 0/104 [00:00<?, ?it/s]Loading weights: 100%|██████████| 104/104 [00:00<00:00, 14584.49it/s]
+{"method": "Additive MSE simple", "ratio": 0.0, "nll": 2.838469222187996, "property": 0.4061855711042881, "latency_ms": 19.853442747262307}
+{"method": "Additive MSE simple", "ratio": 0.4, "nll": 3.8080335706472397, "property": 0.9455135278403759, "latency_ms": 0.24883862351998687}
+{"method": "Additive MSE simple", "ratio": 0.8, "nll": 4.998050838708878, "property": 0.9992126971483231, "latency_ms": 0.1504792453488335}
+{"method": "Additive MSE capacity", "ratio": 0.0, "nll": 3.391570493578911, "property": 0.6134919375181198, "latency_ms": 1.1563488660613075}
+{"method": "Additive MSE capacity", "ratio": 0.4, "nll": 3.9135105311870575, "property": 0.9986161962151527, "latency_ms": 1.7756353772711009}
+{"method": "Additive MSE capacity", "ratio": 0.8, "nll": 5.076665043830872, "property": 0.9660251550376415, "latency_ms": 2.675020878086798}
+{"method": "Interpolation MSE", "ratio": 0.0, "nll": 2.761301964521408, "property": 0.3324929252266884, "latency_ms": 4.723849007859826}
+{"method": "Interpolation MSE", "ratio": 0.4, "nll": 3.8960468024015427, "property": 0.9991016313433647, "latency_ms": 0.6801406270824373}
+{"method": "Interpolation MSE", "ratio": 0.8, "nll": 4.9194317907094955, "property": 0.9996303953230381, "latency_ms": 0.7240363629534841}
+{"method": "GLP 20 steps", "ratio": 0.0, "nll": 2.7346225306391716, "property": 0.5699824951589108, "latency_ms": 12.627729127416387}
+{"method": "GLP 20 steps", "ratio": 0.4, "nll": 3.698573514819145, "property": 0.9988275244832039, "latency_ms": 11.666906255413778}
+{"method": "GLP 20 steps", "ratio": 0.8, "nll": 5.123121738433838, "property": 0.9992900677025318, "latency_ms": 11.562786501599476}
+{"method": "GLP one Euler", "ratio": 0.0, "nll": 2.7346225306391716, "property": 0.5699824951589108, "latency_ms": 1.2937916326336563}
+{"method": "GLP one Euler", "ratio": 0.4, "nll": 3.6921938210725784, "property": 0.9988853633403778, "latency_ms": 0.8483124984195456}
+{"method": "GLP one Euler", "ratio": 0.8, "nll": 5.089632302522659, "property": 0.9992846101522446, "latency_ms": 0.9954115084838122}
+{"method": "Consistency", "ratio": 0.0, "nll": 2.7647940516471863, "property": 0.5693434029817581, "latency_ms": 3.059734372072853}
+{"method": "Consistency", "ratio": 0.4, "nll": 4.003955274820328, "property": 0.9356892667710781, "latency_ms": 0.42247386591043323}
+{"method": "Consistency", "ratio": 0.8, "nll": 5.270392507314682, "property": 0.9991058371961117, "latency_ms": 0.24812499759718776}
+{"method": "Rectified 1 step", "ratio": 0.0, "nll": 2.92255300283432, "property": 0.6069604977965355, "latency_ms": 0.6564478680957109}
+{"method": "Rectified 1 step", "ratio": 0.4, "nll": 3.722518354654312, "property": 0.9949757717549801, "latency_ms": 0.2968488843180239}
+{"method": "Rectified 1 step", "ratio": 0.8, "nll": 5.073455423116684, "property": 0.998351227492094, "latency_ms": 0.273281242698431}
+{"method": "MeanFlow", "ratio": 0.0, "nll": 2.7901241928339005, "property": 0.5976270101964474, "latency_ms": 0.6849009951110929}
+{"method": "MeanFlow", "ratio": 0.4, "nll": 3.9611286371946335, "property": 0.937066912651062, "latency_ms": 0.4527863784460351}
+{"method": "MeanFlow", "ratio": 0.8, "nll": 5.2034571170806885, "property": 0.9994170889258385, "latency_ms": 0.28881762409582734}
+{"method": "Tangent-preserving MSE", "ratio": 0.0, "nll": 3.1240391433238983, "property": 0.5455713085830212, "latency_ms": 0.32781776099000126}
+{"method": "Tangent-preserving MSE", "ratio": 0.4, "nll": 3.89181649684906, "property": 0.9928095899522305, "latency_ms": 0.2577239938545972}
+{"method": "Tangent-preserving MSE", "ratio": 0.8, "nll": 5.281536757946014, "property": 0.9990980327129364, "latency_ms": 0.43002088204957545}
+{"method": "Safe capacity MSE", "ratio": 0.0, "nll": 3.3578972071409225, "property": 0.6063194647431374, "latency_ms": 20.296947870519944}
+{"method": "Safe capacity MSE", "ratio": 0.4, "nll": 4.434922516345978, "property": 0.996527761220932, "latency_ms": 1.9257916283095255}
+{"method": "Safe capacity MSE", "ratio": 0.8, "nll": 6.180267572402954, "property": 0.9996078573167324, "latency_ms": 1.6017343732528389}
+{"method": "Local geodesic", "ratio": 0.0, "nll": 2.6842397153377533, "property": 0.45138075575232506, "latency_ms": 111.75196873955429}
+{"method": "Local geodesic", "ratio": 0.4, "nll": 3.7702363431453705, "property": 0.9316924549639225, "latency_ms": 98.23181250249036}
+{"method": "Local geodesic", "ratio": 0.8, "nll": 5.699582368135452, "property": 0.9347588196396828, "latency_ms": 98.95027612219565}
