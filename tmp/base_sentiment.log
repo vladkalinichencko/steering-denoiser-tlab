@@ -1,12 +1,0 @@
-/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/.venv/lib/python3.12/site-packages/transformer_lens/config/hooked_transformer_config.py:383: UserWarning: MPS backend may produce silently incorrect results (PyTorch 2.13.0). Set TRANSFORMERLENS_ALLOW_MPS=1 to suppress this warning. See: https://github.com/TransformerLensOrg/TransformerLens/issues/1178
-  warn_if_mps(self.device)
-Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 4035.32it/s]
-Loaded pretrained model gpt2 into HookedTransformer
-Loading weights:   0%|          | 0/104 [00:00<?, ?it/s]Loading weights: 100%|██████████| 104/104 [00:00<00:00, 10151.45it/s]
-alpha=   0.0  ppl=   15.27  d2=0.921  concept=0.618  ' more unusual than it has been for the past 10 years, as the temperatures have been warmer than average in the first half of the morning since 1900.'
-alpha=  10.0  ppl=   18.16  d2=0.912  concept=0.859  " spectacular. It's perfect for you and your family, the sun shines through the shade and the sun shines through the leaves, the birds flock together behind"
-alpha=  20.0  ppl=   19.44  d2=0.908  concept=0.896  " spectacular. It's perfect for you and your family to stay safe and well hydrated.\n\nA sunny day gives you the opportunity to relax and"
-alpha=  40.0  ppl=   47.66  d2=0.867  concept=0.937  ' spectacular. It\'s so clear that the Southern Hemisphere is the "great surprise", and I am particularly pleased with the humidity, the birds, and the'
-alpha=  80.0  ppl=  162.22  d2=0.722  concept=0.983  " more of a surprise to the local and the company's signature cocktails and our holidays and travel. The great energy and wine, the diversity of our holiday"
-alpha= 160.0  ppl=  411.37  d2=0.603  concept=1.000  ' to show a versatile and easy gift and very as service the service and gifts for the wonderful presentation and great gift for The Flor company! wonderful and excellent'
--> runs/check_diffmeansentiment.json

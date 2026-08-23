@@ -36,3 +36,14 @@ mlruns/
 mlartifacts/
 
 # logs/, runs/ и tmp/ содержат доказательства и отслеживаются
+
+# служебные инструкции агентов
+AGENTS.md
+CLAUDE.md
+
+# сырые дампы screening: screening.html self-contained, агрегаты вшиты внутрь
+runs/**/screening.json
+runs/**/*.pkl
+
+# автоматизация и wiring-проверки: проверяющим не нужны
+tmp/

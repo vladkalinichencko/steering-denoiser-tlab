@@ -1,14 +1,0 @@
-Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 7497.43it/s]
-Loaded pretrained model gpt2 into HookedTransformer
- 23711: 'hovah' 'idth' 'glers' 'anwhile' ' Vaugh' 'ittle' 'perty' 'gins' ' vou' ' predec'
- 31538: ' experien' 'estern' '���' ' Canaver' ' coh' 'xual' 'ğ' '�' ' resil' ' eleph'
-  7986: 'etheless' ' eleph' '�' ' respectively' '�' '00007' 'emale' '�' '��' 'arthy'
- 17450: 'inis' ' hers' 'itaire' 'inas' 'div' ' parity' 'ota' ' equivalent' ' therein' ' guess'
-  1835: " ''" ' targeted' 'atform' 'owered' '.' '\\",' ' news' ' returning' ' sports' 'uke'
- 32004: 'ヘ' ' pse' ' welf' 'フォ' 'soDeliveryDate' ' mathemat' '◼' '��' '�' 'ヘラ'
- 28935: ' Canaver' "':" 'undrum' '\\":' 'resa' ' nutshell' ' partName' '¶' ' Profile' 'reenshots'
- 23872: ' Rohingya' 'CVE' 'Merit' ' largeDownload' ' Allaah' ' Priebus' 'soType' 'Muslims' 'alyses' 'phrine'
-  4875: ')).' '.).' ']."' ']).' ').' '}.' ')."' '".' ').[' "'."
-  3675: 'uin' 'erenn' 'ancial' 'onnaissance' 'inia' 'cycles' 'je' ' Introduction' ' legalize' 'olina'
-/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
-  warnings.warn('resource_tracker: There appear to be %d '

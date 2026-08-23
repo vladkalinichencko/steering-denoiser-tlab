@@ -1,14 +1,0 @@
-/Users/vladislavkalinichenko/VSCodeProjects/T-Lab Contests/mechanistic-interpretability/baseline.py:120: DeprecationWarning: HookedTransformer.from_pretrained is deprecated and will be removed in a future major release. Use TransformerBridge.boot_transformers(...) instead, then call enable_compatibility_mode() for HookedTransformer-equivalent numerics. See docs/source/content/migrating_to_v3.md.
-  model = transformer_lens.HookedTransformer.from_pretrained(
-Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 4691.44it/s]
-2026/08/16 00:23:56 INFO mlflow.store.db.utils: Creating initial MLflow database tables...
-2026/08/16 00:23:56 INFO mlflow.store.db.utils: Updating database tables
-2026/08/16 00:23:57 INFO mlflow.tracking.fluent: Experiment with name 'steering' does not exist. Creating a new experiment.
-Loaded pretrained model gpt2 into HookedTransformer
-alpha=   0.0  ppl=   15.36  d1=0.511 d2=0.921 d3=0.994  concept=0.02
-alpha=  20.0  ppl=   17.06  d1=0.503 d2=0.923 d3=0.991  concept=0.02
-alpha=  40.0  ppl=   22.14  d1=0.503 d2=0.936 d3=0.997  concept=0.04
-alpha=  60.0  ppl=   35.67  d1=0.501 d2=0.918 d3=0.998  concept=0.10
-alpha=  80.0  ppl=   70.21  d1=0.443 d2=0.871 d3=0.989  concept=0.04
-alpha= 120.0  ppl=  423.39  d1=0.491 d2=0.930 d3=0.997  concept=0.00
--> runs/sweep_latent27677.json
