@@ -1,5 +1,6 @@
 """Train and evaluate the methods retained by the Mac screening gate."""
 
+import json
 import pathlib
 import signal
 import time
@@ -17,6 +18,13 @@ METHODS = (
 )
 SEEDS = (0, 1, 2)
 LIMIT_SECONDS = 6 * 60 * 60 + 45 * 60
+EARLIER_METHODS = (
+    "Additive MSE capacity", "Consistency",
+    "Rectified 1 step", "Rectified 2 steps", "Rectified 4 steps",
+    "Tangent-preserving MSE", "Nearest activation", "Segment-kNN",
+    "Local tangent", "Local normal", "Local geodesic", "Safe capacity MSE",
+    "Curveball", "INNSteer", "Conditional field / UniSteer",
+)
 
 
 def config(method: str, seed: int) -> dict:
@@ -27,6 +35,23 @@ def config(method: str, seed: int) -> dict:
 
 def checkpoint(method: str, seed: int) -> pathlib.Path:
     return pathlib.Path("runs") / config(method, seed)["tag"] / "best.pt"
+
+
+def add_earlier_screening() -> None:
+    artifact_path = pathlib.Path("runs/mac_final/screening.json")
+    earlier_path = pathlib.Path("runs/mac_screening/screening.json")
+    artifact = json.loads(artifact_path.read_text())
+    earlier = json.loads(earlier_path.read_text())
+    keys = ("method", "ratio", "nll", "property", "dist1", "dist2", "dist3",
+            "latency_ms")
+    artifact["earlier"] = {
+        "label": "Earlier Mac screening · one seed or reduced budget",
+        "source": "../mac_screening/screening.html",
+        "points": [{key: point[key] for key in keys} for point in earlier["points"]
+                   if point["method"] in EARLIER_METHODS],
+    }
+    screening.RUN = artifact_path.parent
+    screening.save(artifact)
 
 
 def main() -> None:
@@ -62,6 +87,7 @@ def main() -> None:
     screening.RUN = pathlib.Path("runs/mac_final")
     screening.SEEDS = (0, 1, 2, 3, 4)
     screening.run(chosen)
+    add_earlier_screening()
     print(f"DONE seconds={time.monotonic()-started:.1f}", flush=True)
 
 
