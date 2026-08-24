@@ -37,7 +37,7 @@ pip install -r requirements.txt
 ```bash
 python train_denoiser.py     # обучение denoiser на естественных активациях
 python eval_steering.py      # оценка выбранных способов починки
-python screening.py          # полный прогон всех методов -> runs/screening.html
+python screening.py          # полный прогон всех методов -> screening.html
 python make_figures.py       # рисунок отчёта из runs/screening.json
 ```
 
@@ -54,6 +54,6 @@ python make_figures.py       # рисунок отчёта из runs/screening.j
 | `screening.py`, `run_mac_final.py` | полный прогон и сборка страницы |
 | `screening_template.html` | шаблон страницы, не отчёт |
 
-Интерактивная диагностика: [runs/screening.html](runs/screening.html) — все точки, три
+Интерактивная диагностика: [screening.html](screening.html) — все точки, три
 сида, доверительные интервалы, настоящие генерации и плашка пятнадцати более ранних
 методов. Данные страницы лежат рядом в `runs/screening.json`.
