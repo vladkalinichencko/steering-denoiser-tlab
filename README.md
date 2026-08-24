@@ -1,7 +1,7 @@
 # Дешёвый steering GPT-2 без деградации текста
 
 Тестовое задание T-LAB, направление mechanistic interpretability. Условие — в
-[NOTES.md](NOTES.md), отчёт — в [REPORT.md](REPORT.md).
+NOTES.md, отчёт — в [REPORT.md](REPORT.md).
 
 ## Лучший чекпойнт
 
@@ -38,7 +38,6 @@ pip install -r requirements.txt
 python train_denoiser.py     # обучение denoiser на естественных активациях
 python eval_steering.py      # оценка выбранных способов починки
 python screening.py          # полный прогон всех методов -> screening.html
-python make_figures.py       # рисунок отчёта из runs/screening.json
 ```
 
 ## Раскладка кода
