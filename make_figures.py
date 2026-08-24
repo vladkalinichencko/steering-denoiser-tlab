@@ -8,7 +8,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-SOURCE = Path("runs/mac_final/screening.json")
+SOURCE = Path("runs/screening.json")
 COLORS = {
     "Naive": "#64748b",
     "Additive MSE simple": "#0f766e",

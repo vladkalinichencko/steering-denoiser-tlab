@@ -1,78 +1,0 @@
-Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 5980.38it/s]
-Loaded pretrained model gpt2 into HookedTransformer
-runs/mac_screening/screening.html
-Loading weights:   0%|          | 0/104 [00:00<?, ?it/s]Loading weights: 100%|██████████| 104/104 [00:00<00:00, 4108.85it/s]
-{"method": "GLP 20 steps t=0.35", "ratio": 0.0, "nll": 3.2379252636432647, "property": 0.4881180149316788, "latency_ms": 60.078479116782546}
-{"method": "GLP 20 steps t=0.35", "ratio": 0.2, "nll": 3.529183367490768, "property": 0.8004957127571106, "latency_ms": 64.11560425476637}
-{"method": "GLP 20 steps t=0.35", "ratio": 0.4, "nll": 4.049466232061386, "property": 0.9366998898983002, "latency_ms": 64.27855211950373}
-{"method": "GLP 20 steps t=0.35", "ratio": 0.6, "nll": 4.588763641119003, "property": 0.9334855368733406, "latency_ms": 66.50471349712461}
-{"method": "GLP 20 steps t=0.35", "ratio": 0.8, "nll": 5.271773213148117, "property": 0.9649460661411285, "latency_ms": 62.09443749685306}
-{"method": "GLP 20 steps t=0.35", "ratio": 1.0, "nll": 5.6894411277770995, "property": 0.9730133152008057, "latency_ms": 60.392609375412576}
-{"method": "GLP 20 steps t=0.35", "ratio": 1.2, "nll": 6.133989610671997, "property": 0.9837805634737015, "latency_ms": 55.52363536844496}
-{"method": "GLP 20 steps t=0.35", "ratio": 1.4, "nll": 6.30885822057724, "property": 0.9988466319441796, "latency_ms": 56.14196349051781}
-{"method": "GLP 20 steps t=0.35", "ratio": 1.6, "nll": 6.475027549266815, "property": 0.9935327935218811, "latency_ms": 60.41495312820189}
-{"method": "GLP 20 steps t=0.35", "ratio": 1.8, "nll": 6.570713999271393, "property": 0.9943421417474747, "latency_ms": 62.94482812518254}
-{"method": "GLP 20 steps t=0.35", "ratio": 2.0, "nll": 6.627586278915405, "property": 0.9943711984157563, "latency_ms": 62.41347400646191}
-{"method": "GLP 20 steps t=0.5", "ratio": 0.0, "nll": 3.918618108034134, "property": 0.5042373025417328, "latency_ms": 58.72885424469132}
-Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 5275.00it/s]
-Loaded pretrained model gpt2 into HookedTransformer
-runs/mac_screening/screening.html
-Loading weights:   0%|          | 0/104 [00:00<?, ?it/s]Loading weights: 100%|██████████| 104/104 [00:00<00:00, 4828.40it/s]
-{"method": "GLP 20 steps t=0.5", "ratio": 0.2, "nll": 4.007444367408753, "property": 0.7996165710687637, "latency_ms": 57.100281250313856}
-{"method": "GLP 20 steps t=0.5", "ratio": 0.4, "nll": 4.271024971008301, "property": 0.9167157754302024, "latency_ms": 57.252880244050175}
-{"method": "GLP 20 steps t=0.5", "ratio": 0.6, "nll": 4.830098346471787, "property": 0.9267088821530343, "latency_ms": 52.90155723923817}
-{"method": "GLP 20 steps t=0.5", "ratio": 0.8, "nll": 5.452009922266006, "property": 0.9573304522037506, "latency_ms": 55.637760495301336}
-{"method": "GLP 20 steps t=0.5", "ratio": 1.0, "nll": 5.838859095573425, "property": 0.9512891617417335, "latency_ms": 57.07009375328198}
-{"method": "GLP 20 steps t=0.5", "ratio": 1.2, "nll": 6.2568145799636845, "property": 0.9845218512415886, "latency_ms": 58.54994275432546}
-{"method": "GLP 20 steps t=0.5", "ratio": 1.4, "nll": 6.321468920707702, "property": 0.9940870836377144, "latency_ms": 54.03580724669155}
-{"method": "GLP 20 steps t=0.5", "ratio": 1.6, "nll": 6.48487530708313, "property": 0.993473254442215, "latency_ms": 54.197000004933216}
-{"method": "GLP 20 steps t=0.5", "ratio": 1.8, "nll": 6.532414798736572, "property": 0.9987174114584922, "latency_ms": 58.338119750260375}
-{"method": "GLP 20 steps t=0.5", "ratio": 2.0, "nll": 6.625824253559113, "property": 0.998390040397644, "latency_ms": 59.83977086725645}
-Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 7074.64it/s]
-Loaded pretrained model gpt2 into HookedTransformer
-runs/mac_screening/screening.html
-Loading weights:   0%|          | 0/104 [00:00<?, ?it/s]Loading weights: 100%|██████████| 104/104 [00:00<00:00, 11138.83it/s]
-{"method": "Consistency t=0.35", "ratio": 0.0, "nll": 3.431943120956421, "property": 0.5171469497680664, "latency_ms": 0.9224583773175254}
-{"method": "Consistency t=0.35", "ratio": 0.2, "nll": 3.7044253301620484, "property": 0.7682816916704178, "latency_ms": 0.9638906340114772}
-{"method": "Consistency t=0.35", "ratio": 0.4, "nll": 4.155450009107589, "property": 0.8569568786025047, "latency_ms": 1.095500003430061}
-{"method": "Consistency t=0.35", "ratio": 0.6, "nll": 4.79234189748764, "property": 0.9033628690242768, "latency_ms": 0.9402656287420541}
-{"method": "Consistency t=0.35", "ratio": 0.8, "nll": 5.3083984458446505, "property": 0.9346323612332345, "latency_ms": 0.8173906244337559}
-{"method": "Consistency t=0.35", "ratio": 1.0, "nll": 5.870779275894165, "property": 0.9405080184340477, "latency_ms": 0.9889166249195114}
-{"method": "Consistency t=0.35", "ratio": 1.2, "nll": 6.1373770141601565, "property": 0.9581184920668602, "latency_ms": 0.8472187473671511}
-{"method": "Consistency t=0.35", "ratio": 1.4, "nll": 6.40730753660202, "property": 0.9851374012231827, "latency_ms": 0.9238698694389313}
-{"method": "Consistency t=0.35", "ratio": 1.6, "nll": 6.519637310504914, "property": 0.9935392779111862, "latency_ms": 0.9030051296576858}
-{"method": "Consistency t=0.35", "ratio": 1.8, "nll": 6.592188007831574, "property": 0.9972524109482765, "latency_ms": 0.8762604993535206}
-{"method": "Consistency t=0.35", "ratio": 2.0, "nll": 6.629666576385498, "property": 0.9944992297887802, "latency_ms": 0.870088508236222}
-{"method": "Consistency t=0.5", "ratio": 0.0, "nll": 4.696054103374482, "property": 0.48136967480182646, "latency_ms": 1.0220781259704381}
-{"method": "Consistency t=0.5", "ratio": 0.2, "nll": 4.851364341974258, "property": 0.7346928751468659, "latency_ms": 1.0942082590190694}
-{"method": "Consistency t=0.5", "ratio": 0.4, "nll": 5.106691431999207, "property": 0.8152161931991577, "latency_ms": 0.9245000110240653}
-{"method": "Consistency t=0.5", "ratio": 0.6, "nll": 5.593612953424453, "property": 0.8751247233152389, "latency_ms": 0.6792343774577603}
-{"method": "Consistency t=0.5", "ratio": 0.8, "nll": 5.958495275974274, "property": 0.9075662702322006, "latency_ms": 1.0698801197577268}
-{"method": "Consistency t=0.5", "ratio": 1.0, "nll": 6.11732616186142, "property": 0.9298612025380134, "latency_ms": 0.9743437549332157}
-{"method": "Consistency t=0.5", "ratio": 1.2, "nll": 6.307609009742737, "property": 0.9737046003341675, "latency_ms": 1.1616146221058443}
-{"method": "Consistency t=0.5", "ratio": 1.4, "nll": 6.505839307308197, "property": 0.9692722627520561, "latency_ms": 0.8133124938467517}
-{"method": "Consistency t=0.5", "ratio": 1.6, "nll": 6.684904291629791, "property": 0.9520404294133187, "latency_ms": 1.0276615066686645}
-{"method": "Consistency t=0.5", "ratio": 1.8, "nll": 6.700980279445648, "property": 0.9871833944320678, "latency_ms": 1.1674531269818544}
-{"method": "Consistency t=0.5", "ratio": 2.0, "nll": 6.646297428607941, "property": 0.9823779907822608, "latency_ms": 1.0481771168997511}
-{"method": "MeanFlow t=0.35", "ratio": 0.0, "nll": 3.416734743118286, "property": 0.4506793648004532, "latency_ms": 1.344562493613921}
-{"method": "MeanFlow t=0.35", "ratio": 0.2, "nll": 3.625863445997238, "property": 0.8142195871472359, "latency_ms": 1.1791041179094464}
-{"method": "MeanFlow t=0.35", "ratio": 0.4, "nll": 4.085190017223358, "property": 0.9036196786165237, "latency_ms": 1.2770468747476116}
-{"method": "MeanFlow t=0.35", "ratio": 0.6, "nll": 4.750431153774262, "property": 0.9064796245098115, "latency_ms": 1.0321927547920495}
-{"method": "MeanFlow t=0.35", "ratio": 0.8, "nll": 5.409242222309112, "property": 0.954587844312191, "latency_ms": 1.197583376779221}
-{"method": "MeanFlow t=0.35", "ratio": 1.0, "nll": 5.816071506738663, "property": 0.9543856635689736, "latency_ms": 1.299822877626866}
-{"method": "MeanFlow t=0.35", "ratio": 1.2, "nll": 6.273846220970154, "property": 0.9793904379010201, "latency_ms": 1.0023281211033463}
-{"method": "MeanFlow t=0.35", "ratio": 1.4, "nll": 6.482048590183258, "property": 0.99885852009058, "latency_ms": 1.1390781291993335}
-{"method": "MeanFlow t=0.35", "ratio": 1.6, "nll": 6.650764760971069, "property": 0.9981751883029938, "latency_ms": 1.0159375087823719}
-{"method": "MeanFlow t=0.35", "ratio": 1.8, "nll": 6.783869378566742, "property": 0.9969242969155312, "latency_ms": 1.2920468725496903}
-{"method": "MeanFlow t=0.35", "ratio": 2.0, "nll": 6.854774761199951, "property": 0.9929734355211258, "latency_ms": 0.8059374958975241}
-{"method": "MeanFlow t=0.5", "ratio": 0.0, "nll": 4.840381773710251, "property": 0.4618305304646492, "latency_ms": 1.0085833782795817}
-{"method": "MeanFlow t=0.5", "ratio": 0.2, "nll": 4.917935087680816, "property": 0.7741886395215988, "latency_ms": 0.8907240116968751}
-{"method": "MeanFlow t=0.5", "ratio": 0.4, "nll": 5.162813249826431, "property": 0.8760016033053398, "latency_ms": 1.1669115046970546}
-{"method": "MeanFlow t=0.5", "ratio": 0.6, "nll": 5.520729124546051, "property": 0.9192887777090073, "latency_ms": 1.1283437488600612}
-{"method": "MeanFlow t=0.5", "ratio": 0.8, "nll": 5.847243486642838, "property": 0.9318030223250389, "latency_ms": 1.3095417525619268}
-{"method": "MeanFlow t=0.5", "ratio": 1.0, "nll": 6.015447578430176, "property": 0.9667857167124748, "latency_ms": 0.8494531357428059}
-{"method": "MeanFlow t=0.5", "ratio": 1.2, "nll": 6.2823179864883425, "property": 0.979539809525013, "latency_ms": 0.7616718648932874}
-{"method": "MeanFlow t=0.5", "ratio": 1.4, "nll": 6.578050134181976, "property": 0.982856673002243, "latency_ms": 0.846296883537434}
-{"method": "MeanFlow t=0.5", "ratio": 1.6, "nll": 6.699965717792511, "property": 0.9888834100961685, "latency_ms": 0.7977500063134357}
-{"method": "MeanFlow t=0.5", "ratio": 1.8, "nll": 6.741776239871979, "property": 0.9957093253731728, "latency_ms": 0.865458365296945}
-{"method": "MeanFlow t=0.5", "ratio": 2.0, "nll": 6.878127627372741, "property": 0.9935045942664147, "latency_ms": 1.0555625049164519}

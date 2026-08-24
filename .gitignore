@@ -43,6 +43,7 @@ CLAUDE.md
 
 # сырые дампы screening: screening.html self-contained, агрегаты вшиты внутрь
 runs/**/screening.json
+!runs/screening.json
 runs/**/*.pkl
 
 # автоматизация и wiring-проверки: проверяющим не нужны
@@ -50,3 +51,4 @@ tmp/
 
 # автоматизация прогонов: проверяющим не нужна
 run_steering.sh
+setup.sh

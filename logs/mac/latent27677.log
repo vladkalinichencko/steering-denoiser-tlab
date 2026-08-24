@@ -1,23 +1,0 @@
-Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 4291.00it/s]
-Loaded pretrained model gpt2 into HookedTransformer
-   7.754  ' Paris'             … shoes (lots of medieval shoes in Paris
-   0.903  ' Cas'               … rented out during that time. Mr. Cas
-   0.000  '�'                  …<|endoftext|>�
-   0.000  '�'                  …<|endoftext|>♬
-   0.000  '�'                  …<|endoftext|>You�
-   0.000  '�'                  …<|endoftext|>Today�
-   0.000  '�'                  …<|endoftext|>I�
-   0.000  '�'                  …<|endoftext|>It�
-   0.000  '�'                  …<|endoftext|>It�
-   0.000  '�'                  …<|endoftext|>Everything�
-   0.000  '�'                  …<|endoftext|>America�
-   0.000  '||'                 …<|endoftext|>||
-   0.000  '|'                  …<|endoftext|>|
-   0.000  '|'                  …<|endoftext|>|
-   0.000  '|'                  …<|endoftext|>|
-   0.000  '|'                  …<|endoftext|>|
-   0.000  '|'                  …<|endoftext|>|
-   0.000  '|'                  …<|endoftext|>|
-   0.000  '|'                  …<|endoftext|>|
-   0.000  '|'                  …<|endoftext|>|
--> runs/check_sae27677.json
