@@ -14,8 +14,12 @@ Two vector families:
 
 import pathlib
 
+import blobfile as bf
+import sparse_autoencoder
 import torch
 import transformer_lens
+from datasets import load_dataset
+from transformers import pipeline
 
 LAYER = 6
 HOOK = f"blocks.{LAYER}.hook_resid_post"
@@ -42,27 +46,21 @@ CONTRAST = {
     ),
 }
 
-
 def load_model(device):
     model = transformer_lens.HookedTransformer.from_pretrained(
         "gpt2", center_writing_weights=False, device=device)
     model.eval()
     return model
 
-
 _sae = None
-
 
 def autoencoder(device):
     """OpenAI v5_32k SAE для слоя 6, один раз на процесс."""
     global _sae
     if _sae is None:
-        import blobfile as bf
-        import sparse_autoencoder
         with bf.BlobFile(sparse_autoencoder.paths.v5_32k("resid_post_mlp", LAYER), "rb") as f:
             _sae = sparse_autoencoder.Autoencoder.from_state_dict(torch.load(f))
     return _sae.to(device)  # кэш один на процесс, а устройство спрашивают разное
-
 
 def sae_vector(latent, device):
     cache = CACHE / f"v_sae{latent}_layer{LAYER}.pt"
@@ -72,14 +70,11 @@ def sae_vector(latent, device):
         torch.save(v / v.norm(), cache)
     return torch.load(cache, map_location=device).float()
 
-
 @torch.no_grad()
 def sentiment_activations(model, device):
     """Per-sentence SST-5 train activations for the fixed sentiment direction."""
     cache = CACHE / f"sst5_layer{LAYER}_{SST5_REVISION}.pt"
     if not cache.exists():
-        from datasets import load_dataset
-
         dataset = load_dataset("SetFit/sst5", split="train", revision=SST5_REVISION)
         sides = []
         for labels in ({3, 4}, {0, 1}):
@@ -104,7 +99,6 @@ def sentiment_activations(model, device):
                              "pooling": "mean non-padding token activation", "hook": HOOK}}, cache)
     return torch.load(cache, map_location=device, weights_only=False)
 
-
 @torch.no_grad()
 def diffmean_vector(concept, model, device):
     """Mean activation of the positive set minus the negative one, over all positions."""
@@ -124,11 +118,9 @@ def diffmean_vector(concept, model, device):
         torch.save(v / v.norm(), cache)
     return torch.load(cache, map_location=device).float()
 
-
 def vector(spec, model, device):
     kind, name = spec.split(":")
     return sae_vector(int(name), device) if kind == "sae" else diffmean_vector(name, model, device)
-
 
 def tangent_basis(dim, device, n=200_000):
     """Top principal directions of the activation cloud, as a stand-in tangent space.
@@ -148,7 +140,6 @@ def tangent_basis(dim, device, n=200_000):
         torch.save(basis, cache)
     return torch.load(cache, map_location=device).float()
 
-
 def split_vector(v, basis, part):
     """v -> its component inside the basis ("tangent") or outside it ("normal")."""
     along = basis @ (basis.T @ v)
@@ -160,12 +151,10 @@ def split_vector(v, basis, part):
         return v
     return out / out.norm().clamp_min(1e-9)
 
-
 def activation_bank(n, device):
     """Real activations to snap to, from the same cache the denoisers train on."""
     acts = torch.load(CACHE / "acts_layer6_500000.pt", map_location="cpu")[:n]
     return acts.float().to(device)
-
 
 def segment_repair(bank, v, alpha, keep=0.0):
     """Snap the steered state to the nearest real activation beside the steering segment.
@@ -189,7 +178,6 @@ def segment_repair(bank, v, alpha, keep=0.0):
         return bank[best]
 
     return repair
-
 
 def geodesic_hook(v, alpha, bank, steps=8, k=256, dim=16):
     """Steer in small steps, re-aiming along the local tangent at each one.
@@ -218,7 +206,6 @@ def geodesic_hook(v, alpha, bank, steps=8, k=256, dim=16):
 
     return hook
 
-
 def make_hook(v, alpha, repair=None, safe=False):
     """h -> repair(h + alpha*v). repair=None is the naive baseline from the task.
 
@@ -241,7 +228,6 @@ def make_hook(v, alpha, repair=None, safe=False):
         return fixed.reshape(shape)
     return hook
 
-
 @torch.no_grad()
 def generate(model, hooks, n_samples, max_new_tokens, seed):
     torch.manual_seed(seed)
@@ -256,7 +242,6 @@ def generate(model, hooks, n_samples, max_new_tokens, seed):
                          "n_prompt": n_prompt} for row in out]
     return samples
 
-
 @torch.no_grad()
 def perplexity(model, samples):
     """Perplexity of the continuations under the *clean* model — the fluency axis."""
@@ -265,7 +250,6 @@ def perplexity(model, samples):
         loss = model(model.to_tokens(s["text"]), return_type="loss", loss_per_token=True)[0]
         losses.append(loss[s["n_prompt"] - 1:].mean().item())
     return float(torch.tensor(losses).mean().exp())
-
 
 def dist_n(texts, n):
     grams, total = set(), 0
@@ -276,21 +260,17 @@ def dist_n(texts, n):
             total += 1
     return len(grams) / max(total, 1)
 
-
 _judge = None
-
 
 def sentiment_score(texts):
     """P(positive) averaged over continuations, from a local SST-2 classifier."""
     global _judge
     if _judge is None:
-        from transformers import pipeline
         _judge = pipeline("sentiment-analysis",
                           model="distilbert-base-uncased-finetuned-sst-2-english",
                           truncation=True)
     out = _judge([t if t.strip() else "." for t in texts])
     return sum(r["score"] if r["label"] == "POSITIVE" else 1 - r["score"] for r in out) / len(out)
-
 
 @torch.no_grad()
 def latent_score(texts, latent, model):
@@ -310,7 +290,6 @@ def latent_score(texts, latent, model):
         peaks.append(float(ae.encode(acts)[0][:, latent].max()))
     return sum(peaks) / max(len(peaks), 1)
 
-
 @torch.no_grad()
 def lens_score(texts, v, model, k=50):
     """Share of generated tokens among the top-k the direction itself promotes.
@@ -328,11 +307,9 @@ def lens_score(texts, v, model, k=50):
         total += len(ids)
     return hits / max(total, 1)
 
-
 def keyword_score(texts, words):
     words = [w.lower() for w in words]
     return sum(any(w in t.lower() for w in words) for t in texts) / max(len(texts), 1)
-
 
 def measure(model, samples, spec, words=None, concept_mode="auto", v=None):
     """Обе оси парето. Ось концепта зависит от того, чем задан вектор.

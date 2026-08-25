@@ -19,12 +19,18 @@ python screening.py         # полный прогон всех методов,
 
 | из отчёта | в коде |
 |---|---|
-| наивный стиринг без починки | `baseline.py`, `repairs/none.py` |
-| аддитивный денойзер | `repairs/mse.py` |
-| GLP на двадцать шагов | `repairs/glp.py` |
-| один шаг Эйлера | `repairs/glp_one_euler.py` |
-| ближайшая активация на отрезке | `repairs/knn.py` |
+| наивный стиринг без починки | `baseline.py`, `methods/none.py` |
+| аддитивный денойзер | `methods/mse.py` |
+| GLP на двадцать шагов | `methods/glp.py` |
+| один шаг Эйлера | `methods/glp_one_euler.py` |
+| ближайшая активация на отрезке | `methods/knn.py` |
+| неудачные варианты (отчёт) | `methods/FAILED_BUILDERS`: tangent_mse, consistency, meanflow, rectified, curveball, inn, unisteer |
+| обучение неудачных карт | `run_mac_tangent.py`, `run_mac_inn.py`, `run_mac_curveball.py`, `run_mac_unisteer.py` |
 | архитектура денойзера и шаги возврата | `denoiser.py` |
+| модели активаций и функции потерь | `models.py` |
+| нелинейные методы (INN, Curveball, ConditionalFlow) | `nonlinear.py` |
+| путь данных и обучение | `training.py` |
+| диагностика и сентимент | `diagnostics.py` |
 | направления, активации, хуки, метрики | `steering.py` |
 | обучение денойзера | `train_denoiser.py` |
 | общий путь оценки | `eval_steering.py` |

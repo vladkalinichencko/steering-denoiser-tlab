@@ -16,12 +16,12 @@ import pathlib
 import mlflow
 import torch
 import torch.nn.functional as F
+from datasets import load_dataset
 
 import denoiser
 import steering
 
 CACHE = pathlib.Path("datasets")
-
 
 def collect_activations(n_vectors, device, seq_len=128):
     """FineWeb text through GPT-2, layer-6 residual stream, cached in fp16."""
@@ -29,7 +29,6 @@ def collect_activations(n_vectors, device, seq_len=128):
     if cache.exists():
         return torch.load(cache, map_location="cpu")
 
-    from datasets import load_dataset
     model = steering.load_model(device)
     stream = load_dataset("HuggingFaceFW/fineweb", name="sample-10BT",
                           split="train", streaming=True)
@@ -53,7 +52,6 @@ def collect_activations(n_vectors, device, seq_len=128):
     print(f"сохранено: {cache}  {tuple(acts.shape)}")
     return acts
 
-
 def corrupt(z, mode, sigma, generator=None, basis=None):
     """Порча в стандартизованном пространстве, поэтому sigma=1 — это масштаб данных.
 
@@ -73,14 +71,12 @@ def corrupt(z, mode, sigma, generator=None, basis=None):
     t = torch.rand(len(z), 1, device=z.device, generator=generator)
     return t * z + (1 - t) * eps, z
 
-
 def batch_loss(net, z, args, generator=None, basis=None):
     if args.objective == "flow":
         zt, t, u = denoiser.flow_batch(z, generator)
         return F.mse_loss(net(zt, t), u)
     noisy, target = corrupt(z, args.noise, args.sigma, generator, basis)
     return F.mse_loss(net(noisy), target)
-
 
 def main():
     p = argparse.ArgumentParser()
@@ -159,7 +155,6 @@ def main():
     mlflow.end_run()
     (out / "config.json").write_text(json.dumps({**vars(args), "best_val_loss": best}, indent=2))
     print(f"лучший val {best:.4f} -> {out}")
-
 
 if __name__ == "__main__":
     main()

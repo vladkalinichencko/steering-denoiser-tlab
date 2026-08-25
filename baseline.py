@@ -15,18 +15,16 @@ import argparse
 import json
 import pathlib
 
+import blobfile as bf
+import sparse_autoencoder
 import torch
+from datasets import load_dataset
 
 import steering
-
 
 @torch.no_grad()
 def top_tokens(latent, model, device, n_texts=400, k=20, seq_len=128):
     """Tokens with the largest activation of SAE latent `latent`, with context."""
-    import blobfile as bf
-    import sparse_autoencoder
-    from datasets import load_dataset
-
     with bf.BlobFile(sparse_autoencoder.paths.v5_32k("resid_post_mlp", steering.LAYER), "rb") as f:
         ae = sparse_autoencoder.Autoencoder.from_state_dict(torch.load(f)).to(device)
 
@@ -46,7 +44,6 @@ def top_tokens(latent, model, device, n_texts=400, k=20, seq_len=128):
                          model.to_string(tokens[0, max(0, pos - 8):pos + 1])))
     hits.sort(reverse=True)
     return hits[:k]
-
 
 @torch.no_grad()
 def frequent_latents(device, k=20, n=200_000):
@@ -71,7 +68,6 @@ def frequent_latents(device, k=20, n=200_000):
              "mean_act": round(float(total[i] / fired[i].clamp_min(1)), 3)}
             for f, i in zip(top.values, top.indices)]
 
-
 @torch.no_grad()
 def logit_lens(v, model, k=15):
     """Tokens the direction pushes towards, read straight off the unembedding.
@@ -83,7 +79,6 @@ def logit_lens(v, model, k=15):
     logits = model.ln_final(v[None]) @ model.W_U
     top = logits[0].topk(k)
     return [(round(float(x), 3), model.to_string(i)) for x, i in zip(top.values, top.indices)]
-
 
 def main():
     p = argparse.ArgumentParser()
@@ -140,7 +135,6 @@ def main():
     path.parent.mkdir(exist_ok=True)
     path.write_text(json.dumps(out, indent=2))
     print(f"-> {path}")
-
 
 if __name__ == "__main__":
     main()

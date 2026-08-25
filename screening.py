@@ -12,9 +12,10 @@ import time
 import torch
 
 import steering
-from tmp import methods
-from tmp.diagnostics import sentiment
-from tmp.training import device, load_checkpoint
+import models as methods
+from diagnostics import sentiment
+from nonlinear import INNSteer, ConditionalFlow, conditional_transport
+from training import device, load_checkpoint
 
 RUN = pathlib.Path("runs")
 DATA = pathlib.Path("datasets/fineweb_layer6_mac_full.pt")
@@ -45,7 +46,6 @@ CHECKPOINTS = {
     "Tangent-preserving MSE": ("runs/mac_reduced_tangent_mse/best.pt", 0.5, 1),
 }
 
-
 def digest(path):
     value = hashlib.sha256()
     with pathlib.Path(path).open("rb") as source:
@@ -53,13 +53,11 @@ def digest(path):
             value.update(chunk)
     return value.hexdigest()
 
-
 def synchronize(target: torch.device) -> None:
     if target.type == "cuda":
         torch.cuda.synchronize()
     elif target.type == "mps":
         torch.mps.synchronize()
-
 
 def load_state(target: torch.device):
     data = torch.load(DATA, map_location="cpu", weights_only=False)
@@ -80,7 +78,6 @@ def load_state(target: torch.device):
     return data, normalizer, source, vector, bank, heldout_raw, heldout, centre, basis, \
         clean_geometry, scale
 
-
 def checkpoint_mode(name: str, target: torch.device, vector: torch.Tensor):
     path, start, steps = CHECKPOINTS[name]
     model, checkpoint = load_checkpoint(pathlib.Path(path), target)
@@ -94,7 +91,6 @@ def checkpoint_mode(name: str, target: torch.device, vector: torch.Tensor):
 
     return {"apply": apply, "checkpoint": path,
             "parameters": checkpoint["config"]["parameters"]}
-
 
 def geometry_modes(normalizer, bank, vector):
     direction = vector / normalizer.std
@@ -153,7 +149,6 @@ def geometry_modes(normalizer, bank, vector):
         "Local geodesic": {"apply": geodesic, "checkpoint": None, "parameters": 0},
     }
 
-
 def safe_mode(capacity, vector):
     unit = vector / vector.norm()
 
@@ -167,7 +162,6 @@ def safe_mode(capacity, vector):
 
     return {"apply": apply, "checkpoint": "runs/mac_full_additive_capacity/best.pt",
             "parameters": sum(parameter.numel() for parameter in capacity.parameters())}
-
 
 def curveball_mode(path: pathlib.Path):
     with path.open("rb") as file:
@@ -199,9 +193,7 @@ def curveball_mode(path: pathlib.Path):
     return {"apply": apply, "checkpoint": str(path), "parameters": 0,
             "coordinates": lambda h: model.transform(((h.cpu() - mean) / std).float()).tolist()}
 
-
 def inn_mode(path: pathlib.Path, target: torch.device):
-    from tmp.nonlinear import INNSteer
     blob = torch.load(path, map_location=target, weights_only=False)
     model = INNSteer(**blob["model_config"]).to(target).eval()
     model.load_state_dict(blob["model"])
@@ -250,9 +242,7 @@ def inn_mode(path: pathlib.Path, target: torch.device):
             "coordinates": lambda h: model((h - mean) / std)[0].detach().cpu().tolist(),
             "jacobian": jacobian}
 
-
 def unisteer_mode(path: pathlib.Path, target: torch.device):
-    from tmp.nonlinear import ConditionalFlow, conditional_transport
     blob = torch.load(path, map_location=target, weights_only=False)
     model = ConditionalFlow(**blob["model_config"]).to(target).eval()
     model.load_state_dict(blob["model"])
@@ -279,7 +269,6 @@ def unisteer_mode(path: pathlib.Path, target: torch.device):
     return {"apply": apply, "checkpoint": str(path),
             "parameters": sum(value.numel() for value in model.parameters())}
 
-
 def geometry(candidate, clean, normalizer, bank, clean_geometry, capacity):
     candidate_z = normalizer.standardize(candidate)
     current = methods.local_geometry(bank, candidate_z, K, RANK)
@@ -292,7 +281,6 @@ def geometry(candidate, clean, normalizer, bank, clean_geometry, capacity):
             "normal_displacement": float(normal.norm(dim=-1).mean()),
             "spectrum": current["spectrum"][0].cpu().tolist()}
 
-
 def diversity(texts, n):
     grams, total = set(), 0
     for text in texts:
@@ -301,7 +289,6 @@ def diversity(texts, n):
         grams.update(current)
         total += len(current)
     return len(grams) / max(total, 1)
-
 
 def hook(apply, strength, target, seed):
     generator = torch.Generator(device=target).manual_seed(seed)
@@ -312,7 +299,6 @@ def hook(apply, strength, target, seed):
         return output
 
     return intervention
-
 
 @torch.no_grad()
 def generate_many(model, prompts, apply, strength, target, seed):
@@ -335,7 +321,6 @@ def generate_many(model, prompts, apply, strength, target, seed):
                 output[index] = model.to_string(row[length:])
     return output
 
-
 @torch.no_grad()
 def nll_many(model, prompts, texts):
     groups = {}
@@ -353,14 +338,12 @@ def nll_many(model, prompts, texts):
                           for loss, (_, prompt_length) in zip(losses, current))
     return values
 
-
 def bootstrap(values, seed=0):
     sample = torch.tensor(values)
     generator = torch.Generator().manual_seed(seed)
     index = torch.randint(len(sample), (1_000, len(sample)), generator=generator)
     means = sample[index].mean(1)
     return [float(value) for value in torch.quantile(means, torch.tensor([0.025, 0.975]))]
-
 
 @torch.no_grad()
 def downstream(model, apply, strength, target):
@@ -379,7 +362,6 @@ def downstream(model, apply, strength, target):
             "logit_kl": float((first.exp() * (first - second)).sum()),
             "clean_top": model.to_string(first.topk(10).indices),
             "edited_top": model.to_string(second.topk(10).indices)}
-
 
 @torch.no_grad()
 def evaluate(name, mode, ratio, state, capacity):
@@ -423,14 +405,12 @@ def evaluate(name, mode, ratio, state, capacity):
             "states": state_path.as_posix(),
             "texts": texts}
 
-
 def save(artifact):
     RUN.mkdir(parents=True, exist_ok=True)
     (RUN / "screening.json").write_text(json.dumps(artifact, indent=2))
     report = pathlib.Path(__file__).with_name("screening_template.html").read_text()
     (RUN / "screening.html").write_text(
         report.replace("__DATA__", json.dumps(artifact).replace("</", "<\\/")))
-
 
 def training_histories():
     output = {}
@@ -449,7 +429,6 @@ def training_histories():
                             "rows": [json.loads(line) for line in history.read_text().splitlines()],
                             "source": history.as_posix()}
     return output
-
 
 def run(selected=None, ratios=RATIOS):
     target = device()
@@ -518,7 +497,6 @@ def run(selected=None, ratios=RATIOS):
         del mode
         gc.collect()
 
-
 @torch.no_grad()
 def enrich():
     """Add full states and method-specific diagnostics without regenerating text."""
@@ -568,9 +546,6 @@ def enrich():
         gc.collect()
     artifact["training"] = training_histories()
     save(artifact)
-
-
-
 
 if __name__ == "__main__":
     run()

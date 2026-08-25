@@ -1,0 +1,9 @@
+{
+  "executionEnvironments": [
+    {
+      "venv": ".venv",
+      "venvPath": ".",
+      "extraPaths": ["ext/sparse_autoencoder"]
+    }
+  ]
+}

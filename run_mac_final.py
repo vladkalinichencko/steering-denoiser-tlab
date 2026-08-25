@@ -5,9 +5,8 @@ import pathlib
 import signal
 import time
 
-from tmp import screening
-from tmp.training import train
-
+import screening
+from training import train
 
 DATA = "datasets/fineweb_layer6_mac_full.pt"
 METHODS = (
@@ -26,16 +25,13 @@ EARLIER_METHODS = (
     "Curveball", "INNSteer", "Conditional field / UniSteer",
 )
 
-
 def config(method: str, seed: int) -> dict:
     return {"tag": f"mac_final_{method}_seed{seed}", "method": method,
             "data": DATA, "steps": 2_000, "batch": 64, "lr": 5e-5,
             "sigma": 1.0, "seed": seed, "log_every": 200, "reduced": False}
 
-
 def checkpoint(method: str, seed: int) -> pathlib.Path:
     return pathlib.Path("runs") / config(method, seed)["tag"] / "best.pt"
-
 
 def add_earlier_screening() -> None:
     artifact_path = pathlib.Path("runs/screening.json")
@@ -52,7 +48,6 @@ def add_earlier_screening() -> None:
     }
     screening.RUN = artifact_path.parent
     screening.save(artifact)
-
 
 def main() -> None:
     started = time.monotonic()
@@ -89,7 +84,6 @@ def main() -> None:
     screening.run(chosen)
     add_earlier_screening()
     print(f"DONE seconds={time.monotonic()-started:.1f}", flush=True)
-
 
 if __name__ == "__main__":
     main()

@@ -21,9 +21,8 @@ import mlflow
 import torch
 
 import denoiser
-import repairs
+import methods
 import steering
-
 
 def load(path, device):
     blob = torch.load(path, map_location=device, weights_only=False)
@@ -33,12 +32,10 @@ def load(path, device):
     net.load_state_dict(blob["model"])
     return net.to(device).eval()
 
-
 def methods(args, nets, bank, v, alpha):
     """-> [(подпись, функция починки)]."""
     return [point for kind in args.repair
-            for point in repairs.BUILDERS[kind](args, nets, bank, v, alpha)]
-
+            for point in methods.BUILDERS[kind](args, nets, bank, v, alpha)]
 
 def main():
     p = argparse.ArgumentParser()
@@ -125,7 +122,6 @@ def main():
     mlflow.log_artifact(str(out))
     mlflow.end_run()
     print(f"-> {out}")
-
 
 if __name__ == "__main__":
     main()

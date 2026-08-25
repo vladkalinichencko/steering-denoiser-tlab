@@ -6,7 +6,6 @@ t_start здесь главный рычаг: он решает, сколько 
 
 import denoiser
 
-
 def build(args, nets, bank, v, alpha):
     return [(f"glp_t{t:g}", lambda h, t=t: denoiser.sdedit(nets["glp"], h, t, args.steps))
             for t in args.t_start]

@@ -16,7 +16,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class Block(nn.Module):
     """Llama3-style SwiGLU block; t modulates the gate pre-activation, as in GLP."""
 
@@ -35,13 +34,11 @@ class Block(nn.Module):
             g = g * self.t_proj(temb)
         return x + self.down(F.silu(g) * self.up(z))
 
-
 def timestep_embedding(t, dim):
     half = dim // 2
     freqs = torch.exp(-math.log(10000) * torch.arange(half, device=t.device) / half)
     ang = t[:, None].float() * freqs[None]
     return torch.cat([ang.cos(), ang.sin()], dim=-1)
-
 
 class Denoiser(nn.Module):
     """predict="residual": h_hat = h + net(h), the task's denoiser.
@@ -95,14 +92,12 @@ class Denoiser(nn.Module):
         out = self.out(self.norm(x))
         return z + out if self.predict == "residual" else out
 
-
 def flow_batch(z0, generator=None):
     """z_t = (1-t) z0 + t eps, target velocity u = eps - z0 (GLP, eq. for flow matching)."""
     t = torch.rand(len(z0), device=z0.device, generator=generator)
     eps = torch.randn(z0.shape, device=z0.device, generator=generator)
     zt = (1 - t[:, None]) * z0 + t[:, None] * eps
     return zt, t, eps - z0
-
 
 @torch.no_grad()
 def sdedit(net, h, t_start=0.5, steps=20, generator=None):
@@ -118,7 +113,6 @@ def sdedit(net, h, t_start=0.5, steps=20, generator=None):
     for a, b in zip(grid[:-1], grid[1:]):
         z = z + (b - a) * net(z, a.expand(len(z)))
     return net.restore(z)
-
 
 @torch.no_grad()
 def sdedit_onestep(net, h, t_start=0.5, generator=None):
